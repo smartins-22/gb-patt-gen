@@ -235,6 +235,7 @@ class SVGEditor:
         self.active_tool.set("line")
         self.canvas.bind("<Configure>", lambda e: self.draw_canvas())
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+        self._bind_shortcuts()
     #--------------------------------------------------------------------------------------------------------
     
     #--------------------------------------------------------------------------------------------------------
@@ -259,6 +260,11 @@ class SVGEditor:
         self.listbox = tk.Listbox(self.left_panel, selectmode=tk.EXTENDED, font=('Arial', 9))
         self.listbox.pack(fill=tk.BOTH, expand=True)
         self.listbox.bind('<<ListboxSelect>>', self.on_list_select)
+        self.listbox.bind('<F2>', self._on_listbox_rename_key)
+        self.listbox.bind('<Delete>', self._on_listbox_delete_key)
+        self.listbox.bind('<BackSpace>', self._on_listbox_delete_key)
+        self.listbox.bind('<Shift-Up>', self._on_listbox_move_up)
+        self.listbox.bind('<Shift-Down>', self._on_listbox_move_down)
         self.refresh_list()
 
         # Reorganization of the collection
@@ -881,7 +887,7 @@ class SVGEditor:
         return {
             "cols": self.cols, "rows": self.rows, "shape_ratio": self.shape_size_ratio.get(), "stroke_pct": self.shape_stroke_pct.get(), "use_outline": True,
             "line_sw": self.line_stroke_width.get(), "c_shapes": self.color_shapes, "c_lines": self.color_lines,
-            "neg": False, "tool": self.active_tool.get(), "shapes": {}, "lines": set(), "blocked_nodes": set()
+            "neg": False, "tool": self.current_shape_id, "shapes": {}, "lines": set(), "blocked_nodes": set()
         }
     
     def _ui_update_and_save(self, _=None):
@@ -978,12 +984,7 @@ class SVGEditor:
     # Save/Load/Apply to/from collection
     #----------------------------
     def save_to_collection(self):
-        if not self.current_pattern_name: return
-        
-        # Save only the shape of the current pattern even if the active tool is the drawing one    
-        current_style = self.active_tool.get()
-        old_style = self.collection[self.current_pattern_name].get("tool", "circle")     
-        tool_to_save = current_style if current_style in ["circle", "square"] else old_style
+        if not self.current_pattern_name: return  
 
         self.collection[self.current_pattern_name] = {
             "cols": self.cols, "rows": self.rows, 
@@ -993,7 +994,7 @@ class SVGEditor:
             "c_shapes": self.color_shapes, 
             "c_lines": self.color_lines,
             "neg": self.negative_mode.get(), 
-            "tool": tool_to_save,
+            "tool": self.current_shape_id,
             "shapes": self.pattern_shapes.copy(), 
             "lines": self.pattern_lines.copy(),
             "blocked_nodes":self.blocked_nodes.copy()
@@ -1078,6 +1079,89 @@ class SVGEditor:
             self.listbox.activate(idx)
             self.listbox.see(idx)
 
+    def _on_listbox_delete_key(self, event=None):
+        self.delete_pattern()
+        return "break"
+
+    def _on_listbox_move_up(self, event=None):
+        self.move_pattern(-1)
+        return "break"
+
+    def _on_listbox_move_down(self, event=None):
+        self.move_pattern(1)
+        return "break"
+
+    def _bind_shortcuts(self):
+        self.root.bind_all('<Control-a>', self._on_ctrl_add)
+        self.root.bind_all('<Control-A>', self._on_ctrl_add)
+        self.root.bind_all('<Control-d>', self._on_ctrl_duplicate)
+        self.root.bind_all('<Control-D>', self._on_ctrl_duplicate)
+        self.root.bind_all('<Control-r>', self._on_ctrl_rename)
+        self.root.bind_all('<Control-R>', self._on_ctrl_rename)
+        self.root.bind_all('<Control-Delete>', self._on_ctrl_delete)
+
+    def _on_ctrl_add(self, event=None):
+        self.add_pattern()
+        return "break"
+
+    def _on_ctrl_duplicate(self, event=None):
+        self.duplicate_pattern()
+        return "break"
+
+    def _on_ctrl_rename(self, event=None):
+        self.rename_pattern()
+        return "break"
+
+    def _on_ctrl_delete(self, event=None):
+        self.delete_pattern()
+        return "break"
+
+    def _on_listbox_rename_key(self, event=None):
+        sel = self.listbox.curselection()
+        if not sel or len(sel) != 1:
+            return "break"
+
+        idx = sel[0]
+        old_name = self.order[idx]
+        bbox = self.listbox.bbox(idx)
+        if not bbox:
+            return "break"
+
+        x, y, w, h = bbox
+        width = self.listbox.winfo_width() - 4
+        entry = tk.Entry(self.listbox)
+        entry.insert(0, old_name)
+        entry.select_range(0, tk.END)
+        entry.focus_set()
+        entry.place(x=2, y=y, width=width, height=h)
+
+        def commit(event=None):
+            new_name = entry.get().strip()
+            if new_name and new_name != old_name:
+                if new_name in self.collection:
+                    messagebox.showerror(self.tr('error'), self.tr('err_exists'))
+                    return "break"
+                self._apply_inline_pattern_rename(old_name, new_name)
+            entry.destroy()
+            return "break"
+
+        def cancel(event=None):
+            entry.destroy()
+            return "break"
+
+        entry.bind('<Return>', commit)
+        entry.bind('<Escape>', cancel)
+        entry.bind('<FocusOut>', cancel)
+        return "break"
+
+    def _apply_inline_pattern_rename(self, old_name, new_name):
+        self.save_to_collection()
+        self.collection[new_name] = self.collection.pop(old_name)
+        self.order[self.order.index(old_name)] = new_name
+        self.current_pattern_name = new_name
+        self.refresh_list()
+        self.load_pattern_from_collection(new_name)
+
     # Pattern Creation/Deletion/Modification
     #----------------------------
 
@@ -1088,8 +1172,9 @@ class SVGEditor:
         new_idx = idx + direction
         if 0 <= new_idx < len(self.order):
             self.order[idx], self.order[new_idx] = self.order[new_idx], self.order[idx]
+            self.current_pattern_name = self.order[new_idx]
             self.refresh_list()
-            self.listbox.select_set(new_idx)
+
 
     def add_pattern(self):
         name = self._ask_custom_string(self.tr('new_patt_title'), self.tr('new_patt_txt'), self.tr('default_pattern_name')+" "+str(len(self.order)+1))
@@ -1132,6 +1217,7 @@ class SVGEditor:
                 d["shapes"], d["lines"] = d["shapes"].copy(), d["lines"].copy()
                 self.collection[new_name] = d
                 self.order.insert(self.order.index(self.current_pattern_name)+1, new_name)
+                self.current_pattern_name = new_name
                 self.refresh_list()
                 self.load_pattern_from_collection(new_name)
             else:
@@ -1191,7 +1277,8 @@ class SVGEditor:
                     node_blocked = v.get("blocked_nodes", []) # Use empty list if it not exists
                     v["blocked_nodes"] = {tuple(pt) for pt in node_blocked}
                     self.collection[k] = v
-                self.refresh_list(); self.load_pattern_from_collection(self.order[0])
+                self.load_pattern_from_collection(self.order[0])
+                self.refresh_list()
 
     #--------------------------------------------------------------------------------------------------------
     #  SVG generation Methods

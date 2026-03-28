@@ -50,6 +50,20 @@ This tool generates SVG files from patterns made of shapes and lines placed on a
   - English and French interface support
 
 ---
+# ⌨️ Keyboard shortcuts
+General:
+- `Ctrl+A`: add a new pattern
+- `Ctrl+D`: duplicate the current pattern
+- `Ctrl+R`: rename the current pattern
+- `Ctrl+Delete`: delete the current pattern
+
+Within the pattern list:
+- `F2`: rename the selected pattern
+- `Delete` / `Backspace`: delete the selected
+- `Shift+Up`: move the selected pattern up
+- `Shift+Down`: move the selected pattern down
+
+---
 # 🔬 Detailed features
 
 ## 🔳 Grid filling options
