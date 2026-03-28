@@ -87,7 +87,9 @@ LANGUAGES = {
         'err_del_last' : "Il est impossible de supprimer le dernier motif de la collection.",
         'err_fill_opt' : "Pas de mode de remplissage défini",
         'clear_all_confirm_title' : "Effacer ?",
-        'clear_all_confirm_txt' : "Effacer le canvas en cours ?\n" 
+        'clear_all_confirm_txt' : "Effacer le canvas en cours ?\n",
+        'close_confirm_title': "Quitter",
+        'close_confirm_txt': "Voulez-vous vraiment fermer l'application ?"
     },
     'en': {
         'main_title': "Pattern Generator v{} | {}",
@@ -162,7 +164,9 @@ LANGUAGES = {
         'err_del_last' : "It is not possible to delete the last pattern of the collection",
         'err_fill_opt' : "Fill option is missing",
         'clear_all_confirm_title' : "Clear ?",
-        'clear_all_confirm_txt' : "Clear the canvas ?\n"    
+        'clear_all_confirm_txt' : "Clear the canvas ?\n",
+        'close_confirm_title': "Quit",
+        'close_confirm_txt': "Do you really want to close the application?"    
     }
 }
 
@@ -230,6 +234,7 @@ class SVGEditor:
         self.load_pattern_from_collection(self.current_pattern_name)
         self.active_tool.set("line")
         self.canvas.bind("<Configure>", lambda e: self.draw_canvas())
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
     #--------------------------------------------------------------------------------------------------------
     
     #--------------------------------------------------------------------------------------------------------
@@ -966,6 +971,10 @@ class SVGEditor:
             self.collection_name = new
             self.lbl_coll_name.config(text=new)
 
+    def on_close(self):
+        if messagebox.askokcancel(self.tr('close_confirm_title'), self.tr('close_confirm_txt')):
+            self.root.destroy()
+
     # Save/Load/Apply to/from collection
     #----------------------------
     def save_to_collection(self):
@@ -1101,6 +1110,8 @@ class SVGEditor:
         
         if new and new != old:
             if new not in self.collection:
+                # Save any pending changes before renaming
+                self.save_to_collection()
                 # Change the key of the collection dictionary
                 self.collection[new] = self.collection.pop(old)
                 # Update the list
