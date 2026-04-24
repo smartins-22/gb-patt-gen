@@ -11,7 +11,7 @@ import re
 ####
 ###########################################################################################################
 
-VERSION="3.4"
+VERSION="3.5"
 
 LANGUAGES = {
     'fr': {
@@ -26,6 +26,8 @@ LANGUAGES = {
         'export_json' : "Export Collection (JSON)",
         'batch_svg_export' : "Générer la Collection (SVG)",
         'label_grid' : "GRILLE",
+        'grid_orthogonal': "Orthogonale",
+        'grid_isometric': "Isométrique",
         'apply_grid' : "Appliquer",
         'fill_all' : "Remplir la grille",
         'fill_options' : "Option de remplissage",
@@ -52,6 +54,7 @@ LANGUAGES = {
         'label_options' : "OPTIONS",
         'show_grid':  "Afficher la grille",
         'show_lines': "Afficher le dessin",
+        'show_shapes': "Afficher les formes",
         'crop_grid' : "Rogner à la grille",
         'add_index' : "Ajouter Index",
         'pos_left': "►|  Gauche",
@@ -103,6 +106,8 @@ LANGUAGES = {
         'export_json' : "Export Collection (JSON)",
         'batch_svg_export' : "Generate Collection (SVG)",
         'label_grid' : "GRID",
+        'grid_orthogonal': "Orthogonal",
+        'grid_isometric': "Isometric",
         'apply_grid' : "Apply",
         'fill_all' : "Fill the grid",
         'fill_options' : "Filling options",
@@ -129,6 +134,7 @@ LANGUAGES = {
         'label_options' : "OPTIONS",
         'show_grid':  "Show the grid",
         'show_lines': "Show the drawing",
+        'show_shapes': "Show the shapes",
         'crop_grid' : "Crop to the grid",
         'add_index' : "Add Index",
         'pos_left': "►|  Left",
@@ -191,9 +197,11 @@ class SVGEditor:
         # --- State variables ---
         self.cols, self.rows = 4, 4
         self.padding = 90
+        self.grid_type = tk.StringVar(value="orthogonal")
 
         self.show_grid = tk.BooleanVar(value=True)
         self.show_lines = tk.BooleanVar(value=True)
+        self.show_shapes = tk.BooleanVar(value=True)
         self.crop_to_grid = tk.BooleanVar(value=True)
         self.negative_mode = tk.BooleanVar(value=False)
         self.fill_mode = tk.StringVar(value="A")
@@ -352,6 +360,18 @@ class SVGEditor:
         self.ent_rows.pack(side=tk.LEFT)
         self.txt_apply_grid=tk.StringVar(value=self.tr('apply_grid'))
         tk.Button(cfg_frame, textvariable=self.txt_apply_grid, command=self.update_grid_size, padx=5).pack(side=tk.RIGHT, padx=(5,0))
+        
+        # -- Grid type selection
+        f_grid_type = tk.Frame(self.cntrl, bg="#f1f3f5")
+        f_grid_type.pack(fill=tk.X, pady=(0, 5))
+        self.txt_grid_orth = tk.StringVar(value=self.tr('grid_orthogonal'))
+        self.txt_grid_iso = tk.StringVar(value=self.tr('grid_isometric'))
+        tk.Radiobutton(f_grid_type, textvariable=self.txt_grid_orth, variable=self.grid_type, 
+                       value="orthogonal", command=self._ui_update_and_save, bg="#f1f3f5", 
+                       font=('Arial', 9)).pack(side=tk.LEFT, padx=(0, 10))
+        tk.Radiobutton(f_grid_type, textvariable=self.txt_grid_iso, variable=self.grid_type, 
+                       value="isometric", command=self._ui_update_and_save, bg="#f1f3f5", 
+                       font=('Arial', 9)).pack(side=tk.LEFT)
         
         # -- Grid filling
         self.txt_fill_all=tk.StringVar(value=self.tr('fill_all'))
@@ -518,6 +538,8 @@ class SVGEditor:
         # -- Main options
         self.txt_show_grid=tk.StringVar(value=self.tr('show_grid'))
         tk.Checkbutton(self.cntrl, textvariable=self.txt_show_grid, variable=self.show_grid, command=self._ui_update_and_save, bg="#f1f3f5").pack(anchor=tk.W)
+        self.txt_show_shapes=tk.StringVar(value=self.tr('show_shapes'))
+        tk.Checkbutton(self.cntrl, textvariable=self.txt_show_shapes, variable=self.show_shapes, command=self._ui_update_and_save, bg="#f1f3f5").pack(anchor=tk.W)
         self.txt_show_lines=tk.StringVar(value=self.tr('show_lines'))
         tk.Checkbutton(self.cntrl, textvariable=self.txt_show_lines, variable=self.show_lines, command=self._ui_update_and_save, bg="#f1f3f5").pack(anchor=tk.W)
         self.txt_crop_grid=tk.StringVar(value=self.tr('crop_grid'))
@@ -792,6 +814,8 @@ class SVGEditor:
 
         self.txt_label_grid.set(self.tr('label_grid'))
         self.txt_apply_grid.set(self.tr('apply_grid'))
+        self.txt_grid_orth.set(self.tr('grid_orthogonal'))
+        self.txt_grid_iso.set(self.tr('grid_isometric'))
         self.txt_fill_all.set(self.tr('fill_all'))
         self.txt_fill_options.set(self.tr('fill_options'))
         self.txt_erase_all.set(self.tr('erase_all'))
@@ -821,6 +845,7 @@ class SVGEditor:
 
         self.txt_show_grid.set(self.tr('show_grid'))
         self.txt_show_lines.set(self.tr('show_lines'))
+        self.txt_show_shapes.set(self.tr('show_shapes'))   
         self.txt_crop_grid.set(self.tr('crop_grid'))
         self.txt_add_index.set(self.tr('add_index'))
         # Update Index Position Option Menu
@@ -887,7 +912,7 @@ class SVGEditor:
         return {
             "cols": self.cols, "rows": self.rows, "shape_ratio": self.shape_size_ratio.get(), "stroke_pct": self.shape_stroke_pct.get(), "use_outline": True,
             "line_sw": self.line_stroke_width.get(), "c_shapes": self.color_shapes, "c_lines": self.color_lines,
-            "neg": False, "tool": self.current_shape_id, "shapes": {}, "lines": set(), "blocked_nodes": set()
+            "neg": self.negative_mode.get(), "tool": self.current_shape_id, "shapes": {}, "lines": set(), "blocked_nodes": set(), "grid_type": self.grid_type.get()
         }
     
     def _ui_update_and_save(self, _=None):
@@ -901,7 +926,10 @@ class SVGEditor:
         if new_tool in ['circle', 'square']:
             self.collection[self.current_pattern_name]['tool'] = new_tool
         # If drawing tool is selected, show the lines
-        if new_tool == "line": self.show_lines.set(True)
+        if new_tool == "line": 
+            self.show_lines.set(True)
+        else: # If shape tool is selected, show the shapes
+            self.show_shapes.set(True)
         # Save and refresh display
         self._ui_update_and_save()
             
@@ -948,8 +976,8 @@ class SVGEditor:
         self._ui_update_and_save()
 
     def _get_index_triangle_points(self, ox, oy, dy, size):
-        target_row = self.rows // 2 if self.rows % 2 == 0 else (self.rows - 1) // 2
-        ty = oy + target_row * dy
+
+        ty = oy
         tri_size = size * self.index_ratio.get()
         h = (math.sqrt(3)/2) * tri_size
         
@@ -997,7 +1025,8 @@ class SVGEditor:
             "tool": self.current_shape_id,
             "shapes": self.pattern_shapes.copy(), 
             "lines": self.pattern_lines.copy(),
-            "blocked_nodes":self.blocked_nodes.copy()
+            "blocked_nodes":self.blocked_nodes.copy(),
+            "grid_type": self.grid_type.get()
         }
 
     def load_pattern_from_collection(self, name):
@@ -1020,6 +1049,7 @@ class SVGEditor:
             self._sync_shape_selector(stored_tool)
         self.pattern_shapes, self.pattern_lines = d["shapes"].copy(), d["lines"].copy()
         self.blocked_nodes = d.get("blocked_nodes", set()).copy()
+        self.grid_type.set(d.get("grid_type", "orthogonal"))
         self.btn_col_shapes.config(bg=self.color_shapes)
         self.btn_col_lines.config(bg=self.color_lines)
         self._sync_btn_neg()
@@ -1041,7 +1071,7 @@ class SVGEditor:
             "stroke_pct": self.shape_stroke_pct.get(), "line_sw": self.line_stroke_width.get(),
             "c_shapes": self.color_shapes, "c_lines": self.color_lines,
             "neg": self.negative_mode.get(), "tool": master_tool,
-            "use_outline": use_outline
+            "use_outline": use_outline, "grid_type": self.grid_type.get()
         }
 
         for idx in selected_indices:
@@ -1291,17 +1321,12 @@ class SVGEditor:
             for name in self.order:
                 self.load_pattern_from_collection(name)
                 clean_name=self._clean_filename(self.current_pattern_name)
-                force_lines=False
-                # 1 Extended version if there is shapes
-                if self.pattern_shapes: 
-                    self._write_svg_file(os.path.join(folder, f"{clean_name}.svg"), crop=False, grid=False, lines=False)
-                else: # If there is no shapes, do not generate 'not cropped' version and force the lines on cropped one
-                    force_lines=True
-                if self.crop_to_grid.get() or force_lines:
-                    self._write_svg_file(os.path.join(folder, f"{clean_name}_cropped.svg"), crop=True, grid=False, lines=force_lines)
-                # 3. Full (Si options cochées)
-                if self.show_grid.get() and self.show_lines.get():
-                    self._write_svg_file(os.path.join(folder, f"{clean_name}_full.svg"), crop=self.crop_to_grid.get(), grid=True, lines=True)
+ 
+                self._write_svg_file(os.path.join(folder, f"{clean_name}.svg"), crop=self.crop_to_grid.get(), grid=False, lines=self.show_lines.get())
+
+                if self.show_grid.get():
+                    self._write_svg_file(os.path.join(folder, f"{clean_name}_grid.svg"), crop=self.crop_to_grid.get(), grid=True, lines=self.show_lines.get())
+
             messagebox.showinfo(self.tr('export_done_title'), self.tr('export_done_txt'))
 
     def export_svg(self):
@@ -1309,15 +1334,11 @@ class SVGEditor:
         path = filedialog.asksaveasfilename(defaultextension=".svg", filetypes=[("SVG", "*.svg")], initialfile=suggested_name)
         if path:
             base = os.path.splitext(path)[0]
-            force_lines=False
-            if self.pattern_shapes: 
-                self._write_svg_file(f"{base}.svg", crop=False, grid=False, lines=False)
-            else: # If there is no shapes, do not generate 'not cropped' version and force the lines on cropped one
-                force_lines=True
-            if self.crop_to_grid.get() or force_lines:
-                self._write_svg_file(f"{base}_cropped.svg", crop=True, grid=False, lines=force_lines)
+            self._write_svg_file(f"{base}.svg",  crop=self.crop_to_grid.get(), grid=False, lines=self.show_lines.get())
+
             if self.show_grid.get() and self.show_lines.get():
-                self._write_svg_file(f"{base}_full.svg", crop=self.crop_to_grid.get(),  grid=True, lines=True)
+                self._write_svg_file(f"{base}_grid.svg",  crop=self.crop_to_grid.get(), grid=True, lines=self.show_lines.get())
+
             messagebox.showinfo(self.tr('export_done_title'), self.tr('export_done_txt'))
 
     def _write_svg_file(self, filename, crop, grid, lines):
@@ -1325,40 +1346,112 @@ class SVGEditor:
         GW = self.cols * cell_size
         GH = self.rows * cell_size
         dx = dy = cell_size
+        
+        grid_type = self.grid_type.get()
+        is_isometric = (grid_type == "isometric")
 
         size = min(dx, dy) * self.shape_size_ratio.get()
         sw_rel = (size / 2) * (self.shape_stroke_pct.get() / 100.0)
         l_sw = cell_size * (self.line_stroke_width.get() / 100.0)
         is_neg = self.negative_mode.get()
-        offset_x, offset_y = (0,0) if crop else (size/2, size/2)
-        vw, vh = (GW, GH) if crop else (GW+size, GH+size)
+        
+        if is_isometric:
+            # For isometric SVG, calculate the bounds
+            # Using cell_size as the isometric "step"
+            step = cell_size
+            corners = [
+                self._grid_to_iso(0, 0, step),
+                self._grid_to_iso(self.cols, 0, step),
+                self._grid_to_iso(self.cols, self.rows, step),
+                self._grid_to_iso(0, self.rows, step)
+            ]
+            min_x = min(c[0] for c in corners)
+            max_x = max(c[0] for c in corners)
+            min_y = min(c[1] for c in corners)
+            max_y = max(c[1] for c in corners)
+            
+            iso_w = max_x - min_x
+            iso_h = max_y - min_y
+            
+            if crop:
+                vw, vh = iso_w, iso_h
+                offset_x = -min_x
+                offset_y = -min_y
+            else:
+                # Add padding
+                padding = size / 2
+                vw = iso_w + 2 * padding
+                vh = iso_h + 2 * padding
+                offset_x = padding - min_x
+                offset_y = padding - min_y
+        else:
+            offset_x, offset_y = (0, 0) if crop else (size/2, size/2)
+            vw, vh = (GW, GH) if crop else (GW+size, GH+size)
 
         # Create SVG Frame work
         svg = ['<?xml version="1.0" encoding="UTF-8"?>', f'<svg width="{vw}" height="{vh}" viewBox="0 0 {vw} {vh}" xmlns="http://www.w3.org/2000/svg">']
         if is_neg: svg.append(f'<rect width="{vw}" height="{vh}" fill="{self.color_shapes}" />')
 
         # Create the Grid if included
-        if grid :
+        if grid:
             g_col = "#444444" if is_neg else "#eeeeee"
-            for i in range(self.cols + 1):
-                x = (i*dx)+offset_x
-                svg.append(f'<line x1="{x}" y1="0" x2="{x}" y2="{vh}" stroke="{g_col}" stroke-width="1" />')
-            for j in range(self.rows + 1):
-                y = (j*dy)+offset_y
-                svg.append(f'<line x1="0" y1="{y}" x2="{vw}" y2="{y}" stroke="{g_col}" stroke-width="1" />')
+            if is_isometric:
+                # Draw isometric grid
+                step = cell_size
+                # Vertical lines (constant column)
+                for i in range(self.cols + 1):
+                    points = []
+                    for j in range(self.rows + 1):
+                        iso_x, iso_y = self._grid_to_iso(i, j, step)
+                        points.append(offset_x + iso_x)
+                        points.append(offset_y + iso_y)
+                    if len(points) >= 4:
+                        svg.append(f'<polyline points="{" ".join(f"{points[k]},{points[k+1]}" for k in range(0, len(points), 2))}" fill="none" stroke="{g_col}" stroke-width="1" />')
+                
+                # Horizontal lines (constant row)
+                for j in range(self.rows + 1):
+                    points = []
+                    for i in range(self.cols + 1):
+                        iso_x, iso_y = self._grid_to_iso(i, j, step)
+                        points.append(offset_x + iso_x)
+                        points.append(offset_y + iso_y)
+                    if len(points) >= 4:
+                        svg.append(f'<polyline points="{" ".join(f"{points[k]},{points[k+1]}" for k in range(0, len(points), 2))}" fill="none" stroke="{g_col}" stroke-width="1" />')
+            else:
+                # Draw orthogonal grid
+                for i in range(self.cols + 1):
+                    x = (i*dx)+offset_x
+                    svg.append(f'<line x1="{x}" y1="0" x2="{x}" y2="{vh}" stroke="{g_col}" stroke-width="1" />')
+                for j in range(self.rows + 1):
+                    y = (j*dy)+offset_y
+                    svg.append(f'<line x1="0" y1="{y}" x2="{vw}" y2="{y}" stroke="{g_col}" stroke-width="1" />')
 
         # Create the lines drawn if included
-        if lines :
+        if lines:
+            step = cell_size
             for line in self.pattern_lines:
-                pts = list(line); x1, y1 = (pts[0][0]*dx)+offset_x, (pts[0][1]*dy)+offset_y
-                x2, y2 = (pts[1][0]*dx)+offset_x, (pts[1][1]*dy)+offset_y
+                pts = list(line)
+                if is_isometric:
+                    iso_x1, iso_y1 = self._grid_to_iso(pts[0][0], pts[0][1], step)
+                    iso_x2, iso_y2 = self._grid_to_iso(pts[1][0], pts[1][1], step)
+                    x1, y1 = offset_x + iso_x1, offset_y + iso_y1
+                    x2, y2 = offset_x + iso_x2, offset_y + iso_y2
+                else:
+                    x1, y1 = (pts[0][0]*dx)+offset_x, (pts[0][1]*dy)+offset_y
+                    x2, y2 = (pts[1][0]*dx)+offset_x, (pts[1][1]*dy)+offset_y
                 svg.append(f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="{self.color_lines}" stroke-width="{l_sw}" stroke-linecap="round" />')
             
             if hasattr(self, 'blocked_nodes'):
                 r_point = l_sw / 2
+                step = cell_size
                 for (c, r_idx) in self.blocked_nodes:
-                    px = (c * dx) + offset_x
-                    py = (r_idx * dy) + offset_y
+                    if is_isometric:
+                        iso_x, iso_y = self._grid_to_iso(c, r_idx, step)
+                        px = offset_x + iso_x
+                        py = offset_y + iso_y
+                    else:
+                        px = (c * dx) + offset_x
+                        py = (r_idx * dy) + offset_y
                     svg.append(f'<circle cx="{px}" cy="{py}" r="{r_point}" fill="{self.color_lines}" />')
 
         # Create the shapes
@@ -1377,47 +1470,68 @@ class SVGEditor:
         index_path_data = ""
         target_node = (0, self.rows // 2 if self.rows % 2 == 0 else (self.rows - 1) // 2)
         if self.show_index.get():
-            # Get the 3 coordinates of the triange that may exceed viewing box
-            idx_pts = self._get_index_triangle_points(offset_x, offset_y, dy, size)
+            step = cell_size
+            if is_isometric:
+                iso_x, iso_y = self._grid_to_iso(0, target_node[1], step)
+                center_x = offset_x + iso_x
+                center_y = offset_y + iso_y
+            else:
+                center_x = offset_x
+                center_y = offset_y + target_node[1] * dy
+            
+            idx_pts = self._get_index_triangle_points(center_x, center_y, dy, size)
             safe_pts = []
-            # Forces points to stay within the viewing boc to avoid the shape to overflow on cropped version
-            for px, py in idx_pts: clipped_x = max(0, min(vw, px)); clipped_y = max(0, min(vh, py)); safe_pts.append(f"{clipped_x:.2f},{clipped_y:.2f}")
+            # Forces points to stay within the viewing box to avoid the shape to overflow on cropped version
+            for px, py in idx_pts: 
+                clipped_x = max(0, min(vw, px))
+                clipped_y = max(0, min(vh, py))
+                safe_pts.append(f"{clipped_x:.2f},{clipped_y:.2f}")
             # Create SVG path for the index
             index_path_data = f"M {safe_pts[0]} L {safe_pts[1]} L {safe_pts[2]} Z"
 
-        for (c, r), s_type in self.pattern_shapes.items():
-            x, y = (c*dx)+offset_x, (r*dy)+offset_y
-            
-            if fam == "circle":
-                ro = size/2
-                # Starting point (M) shall be included in the viewing box
-                start_x = max(0, min(vw, x + ro))
-                d = f"M {start_x},{max(0,min(vh,y))} {gen_circle_pts(x,y,ro,True)} Z"
-                if s_type == "outline":
-                    ri = max(0, ro-sw_rel)
-                    start_xi = max(0, min(vw, x + ri))
-                    d += f" M {start_xi},{max(0,min(vh,y))} {gen_circle_pts(x,y,ri,False)} Z"           
-            else: # Squares
-                do = size/2
-                # Squares are binded by the viewing box to allow proper cropping
-                x1, y1 = max(0, min(vw, x-do)), max(0, min(vh, y-do))
-                x2, y2 = max(0, min(vw, x+do)), max(0, min(vh, y+do)) 
-                d = f"M {x1},{y1} H {x2} V {y2} H {x1} Z"
-                if s_type == "outline":
-                    di = max(0, do-sw_rel)
-                    # Interior Squares are also binded by the viewing box to allow proper cropping
-                    ix1, iy1 = max(0, min(vw, x-di)), max(0, min(vh, y-di))
-                    ix2, iy2 = max(0, min(vw, x+di)), max(0, min(vh, y+di))
-                    # Invert tracing of interior to allow le fill-rule:evenodd
-                    d += f" M {ix1},{iy1} V {iy2} H {ix2} V {iy1} Z"
-            
-            if (c, r) == target_node and index_path_data:
-                d += f" {index_path_data}"
-                index_path_data = "" #delete index_path to not add it on next nodes
-            
-            # Create the SVG path
-            svg.append(f'<path d="{d}" fill="{shape_color}" fill-rule="evenodd" />')
+        if self.show_shapes.get():
+            for (c, r), s_type in self.pattern_shapes.items():
+                step = cell_size
+                if is_isometric:
+                    iso_x, iso_y = self._grid_to_iso(c, r, step)
+                    x, y = offset_x + iso_x, offset_y + iso_y
+                else:
+                    x, y = (c*dx)+offset_x, (r*dy)+offset_y
+                
+                if fam == "circle":
+                    ro = size/2
+                    # Starting point (M) shall be included in the viewing box
+                    start_x = max(0, min(vw, x + ro))
+                    d = f"M {start_x},{max(0,min(vh,y))} {gen_circle_pts(x,y,ro,True)} Z"
+                    if s_type == "outline":
+                        ri = max(0, ro-sw_rel)
+                        start_xi = max(0, min(vw, x + ri))
+                        d += f" M {start_xi},{max(0,min(vh,y))} {gen_circle_pts(x,y,ri,False)} Z"           
+                else:
+                    do = size/2
+                    # Squares are binded by the viewing box to allow proper cropping
+                    x1, y1 = max(0, min(vw, x-do)), max(0, min(vh, y-do))
+                    x2, y2 = max(0, min(vw, x+do)), max(0, min(vh, y+do)) 
+                    d = f"M {x1},{y1} H {x2} V {y2} H {x1} Z"
+                    if s_type == "outline":
+                        di = max(0, do-sw_rel)
+                        # Interior Squares are also binded by the viewing box to allow proper cropping
+                        ix1, iy1 = max(0, min(vw, x-di)), max(0, min(vh, y-di))
+                        ix2, iy2 = max(0, min(vw, x+di)), max(0, min(vh, y+di))
+                        # Invert tracing of interior to allow le fill-rule:evenodd
+                        d += f" M {ix1},{iy1} V {iy2} H {ix2} V {iy1} Z"
+                
+                if (c, r) == target_node and index_path_data and self.color_shapes == self.color_index:
+                    d += f" {index_path_data}"
+                    index_path_data = "" #delete index_path to not add it on next nodes
+                
+                # Create the SVG path
+                svg.append(f'<path d="{d}" fill="{shape_color}" fill-rule="evenodd" />')
         
+        if index_path_data:
+            # If index path was not included in any shape, add it separately on top of the shapes
+            svg.append(f'<path d="{index_path_data}" fill="{self.color_index}" fill-rule="evenodd" />')
+
         # Complete the SVG and write it
         svg.append('</svg>')
         with open(filename, "w", encoding="utf-8") as f: f.write("\n".join(svg))
@@ -1434,19 +1548,42 @@ class SVGEditor:
         # Use same step for X and Y 
         step, _ = self.get_coords()
         if step <= 0: return
-        dx = dy = step
-
-        l_sw = dx * self.line_stroke_width.get()/100.0
+        
+        grid_type = self.grid_type.get()
+        is_isometric = (grid_type == "isometric")
 
         # Computation of available space to center the grid within the canvas
-        # offset_x and offset_y will be used as padding
         available_w = self.canvas.winfo_width()
         available_h = self.canvas.winfo_height()
-        grid_w = self.cols * dx
-        grid_h = self.rows * dy
         
-        offset_x = (available_w - grid_w) / 2
-        offset_y = (available_h - grid_h) / 2
+        # For isometric, calculate bounding box differently
+        if is_isometric:
+            # Calculate the bounds of the isometric grid
+            corners = [
+                self._grid_to_iso(0, 0, step),
+                self._grid_to_iso(self.cols, 0, step),
+                self._grid_to_iso(self.cols, self.rows, step),
+                self._grid_to_iso(0, self.rows, step)
+            ]
+            min_x = min(c[0] for c in corners)
+            max_x = max(c[0] for c in corners)
+            min_y = min(c[1] for c in corners)
+            max_y = max(c[1] for c in corners)
+            
+            iso_w = max_x - min_x
+            iso_h = max_y - min_y
+            
+            offset_x = (available_w - iso_w) / 2 - min_x
+            offset_y = (available_h - iso_h) / 2 - min_y
+            dx = dy = step
+        else:
+            # Orthogonal grid
+            dx = dy = step
+            grid_w = self.cols * dx
+            grid_h = self.rows * dy
+            
+            offset_x = (available_w - grid_w) / 2
+            offset_y = (available_h - grid_h) / 2
 
         # Negative mode
         is_neg = self.negative_mode.get()
@@ -1461,61 +1598,133 @@ class SVGEditor:
         # Create the Grid if included
         if self.show_grid.get():
             g_col = "#444" if is_neg else "#eee"
-            for i in range(self.cols + 1):
-                x = offset_x + i * dx
-                self.canvas.create_line(x, offset_y, x, offset_y + grid_h, fill=g_col)
-            for j in range(self.rows + 1):
-                y = offset_y + j * dy
-                self.canvas.create_line(offset_x, y, offset_x + grid_w, y, fill=g_col)      
+            
+            if is_isometric:
+                # Draw isometric grid
+                # Draw vertical lines (constant column)
+                for i in range(self.cols + 1):
+                    points = []
+                    for j in range(self.rows + 1):
+                        iso_x, iso_y = self._grid_to_iso(i, j, step)
+                        points.append(offset_x + iso_x)
+                        points.append(offset_y + iso_y)
+                    if len(points) >= 4:
+                        self.canvas.create_line(*points, fill=g_col)
+                
+                # Draw horizontal lines (constant row)
+                for j in range(self.rows + 1):
+                    points = []
+                    for i in range(self.cols + 1):
+                        iso_x, iso_y = self._grid_to_iso(i, j, step)
+                        points.append(offset_x + iso_x)
+                        points.append(offset_y + iso_y)
+                    if len(points) >= 4:
+                        self.canvas.create_line(*points, fill=g_col)
+            else:
+                # Draw orthogonal grid
+                for i in range(self.cols + 1):
+                    x = offset_x + i * dx
+                    self.canvas.create_line(x, offset_y, x, offset_y + self.rows * dy, fill=g_col)
+                for j in range(self.rows + 1):
+                    y = offset_y + j * dy
+                    self.canvas.create_line(offset_x, y, offset_x + self.cols * dx, y, fill=g_col)
 
         # Display cropping border if enabled
         if self.crop_to_grid.get():
-            self.canvas.create_rectangle(offset_x, offset_y, offset_x+self.cols*dx, offset_y+self.rows*dy, outline="#00d2ff", width=2, dash=(4,4))    
+            if is_isometric:
+                # Draw isometric cropping border
+                corners = [
+                    (offset_x + self._grid_to_iso(0, 0, step)[0], offset_y + self._grid_to_iso(0, 0, step)[1]),
+                    (offset_x + self._grid_to_iso(self.cols, 0, step)[0], offset_y + self._grid_to_iso(self.cols, 0, step)[1]),
+                    (offset_x + self._grid_to_iso(self.cols, self.rows, step)[0], offset_y + self._grid_to_iso(self.cols, self.rows, step)[1]),
+                    (offset_x + self._grid_to_iso(0, self.rows, step)[0], offset_y + self._grid_to_iso(0, self.rows, step)[1])
+                ]
+                for i in range(4):
+                    x1, y1 = corners[i]
+                    x2, y2 = corners[(i + 1) % 4]
+                    self.canvas.create_line(x1, y1, x2, y2, fill="#00d2ff", width=2, dash=(4, 4))
+            else:
+                # Draw orthogonal cropping border
+                self.canvas.create_rectangle(offset_x, offset_y, offset_x+self.cols*dx, offset_y+self.rows*dy, outline="#00d2ff", width=2, dash=(4,4))
 
         # Create the Drawing/Lines if included and line width not 0
-        if self.show_lines.get() and l_sw!=0 :
+        if self.show_lines.get() and l_sw != 0:
             for line in self.pattern_lines:
-                pts = list(line); x1, y1 = offset_x+pts[0][0]*dx, offset_y+pts[0][1]*dy
-                x2, y2 = offset_x+pts[1][0]*dx, offset_y+pts[1][1]*dy
-                self.canvas.create_line(x1,y1,x2,y2, fill=self.color_lines, width=l_sw, capstyle=tk.ROUND)
+                pts = list(line)
+                if is_isometric:
+                    iso_x1, iso_y1 = self._grid_to_iso(pts[0][0], pts[0][1], step)
+                    iso_x2, iso_y2 = self._grid_to_iso(pts[1][0], pts[1][1], step)
+                    x1, y1 = offset_x + iso_x1, offset_y + iso_y1
+                    x2, y2 = offset_x + iso_x2, offset_y + iso_y2
+                else:
+                    x1, y1 = offset_x + pts[0][0] * dx, offset_y + pts[0][1] * dy
+                    x2, y2 = offset_x + pts[1][0] * dx, offset_y + pts[1][1] * dy
+                self.canvas.create_line(x1, y1, x2, y2, fill=self.color_lines, width=l_sw, capstyle=tk.ROUND)
 
             if hasattr(self, 'blocked_nodes'):
                 # Diameter = line width
-                r = l_sw / 2 
+                r = l_sw / 2
                 for (c, r_idx) in self.blocked_nodes:
-                    # Conversion index grille -> pixels
-                    px = offset_x + c * dx
-                    py = offset_y + r_idx * dy
-                    self.canvas.create_oval(px-r, py-r, px+r, py+r, fill=self.color_lines, outline="")
-        
+                    if is_isometric:
+                        iso_x, iso_y = self._grid_to_iso(c, r_idx, step)
+                        px = offset_x + iso_x
+                        py = offset_y + iso_y
+                    else:
+                        px = offset_x + c * dx
+                        py = offset_y + r_idx * dy
+                    self.canvas.create_oval(px - r, py - r, px + r, py + r, fill=self.color_lines, outline="")
+
         # Display line start point
         if self.line_start_point:
-            sx, sy = offset_x+self.line_start_point[0]*dx, offset_y+self.line_start_point[1]*dy
-            self.canvas.create_oval(sx-6,sy-6,sx+6,sy+6, outline="#ff7675", width=3)
-        
-        # Create the Shapes
-        base = min(dx,dy)*self.shape_size_ratio.get()
-        fill = "white" if is_neg else self.color_shapes
-        
-        # - Use the shape tool stored for the current pattern independently of the active tool
-        #   to be able to render the shapes if the active tool is the drawing one ('line')
-        fam = self.collection[self.current_pattern_name].get('tool', 'circle')
-        for (c,r), t in self.pattern_shapes.items():
-            x, y = offset_x+c*dx, offset_y+r*dy
-            re = base/2
-            if t == "full": self._draw_shape_canvas(x,y,re,fam,fill,"",0)
+            if is_isometric:
+                iso_x, iso_y = self._grid_to_iso(self.line_start_point[0], self.line_start_point[1], step)
+                sx, sy = offset_x + iso_x, offset_y + iso_y
             else:
-                sw = re*t_pct
-                ir = max(0, re-(sw/2))
-                self._draw_shape_canvas(x,y,ir,fam,"",fill,sw)
+                sx = offset_x + self.line_start_point[0] * dx
+                sy = offset_y + self.line_start_point[1] * dy
+            self.canvas.create_oval(sx - 6, sy - 6, sx + 6, sy + 6, outline="#ff7675", width=3)
         
-        # Create the Index in included
+        # Display shapes if enabled
+        if self.show_shapes.get():
+            # Create the Shapes
+            base = min(dx, dy) * self.shape_size_ratio.get()
+            fill = "white" if is_neg else self.color_shapes
+
+            # - Use the shape tool stored for the current pattern independently of the active tool
+            #   to be able to render the shapes if the active tool is the drawing one ('line')
+            fam = self.collection[self.current_pattern_name].get('tool', 'circle')
+            for (c, r), t in self.pattern_shapes.items():
+                if is_isometric:
+                    iso_x, iso_y = self._grid_to_iso(c, r, step)
+                    x, y = offset_x + iso_x, offset_y + iso_y
+                else:
+                    x = offset_x + c * dx
+                    y = offset_y + r * dy
+                
+                re = base / 2
+                if t == "full": self._draw_shape_canvas(x, y, re, fam, fill, "", 0)
+                else:
+                    sw = re * t_pct
+                    ir = max(0, re - (sw / 2))
+                    self._draw_shape_canvas(x, y, ir, fam, "", fill, sw)
+        
+        # Create the Index if enabled
         if self.show_index.get():
             base_s = min(dx, dy) * self.shape_size_ratio.get()
-            pts = self._get_index_triangle_points(offset_x, offset_y, dy, base_s)
-            # Adapt the color of the index if node is occupied and index color is the one of shapes
-            target_row = self.rows // 2 if self.rows % 2 == 0 else (self.rows - 1) // 2         
-            is_node_occupied = (0, target_row) in self.pattern_shapes
+            target_row = self.rows // 2 if self.rows % 2 == 0 else (self.rows - 1) // 2
+            
+            if is_isometric:
+                iso_x, iso_y = self._grid_to_iso(0, target_row, step)
+                center_x = offset_x + iso_x
+                center_y = offset_y + iso_y
+            else:
+                center_x = offset_x
+                center_y = offset_y + target_row * dy
+            
+            pts = self._get_index_triangle_points(center_x, center_y, dy, base_s)
+            
+            # Adapt the color of the index if node is occupied and index color is the one of shapes           
+            is_node_occupied = (0, target_row) in self.pattern_shapes and self.show_shapes.get()
             if self.color_index == self.color_shapes:
                 if is_node_occupied and self.pattern_shapes[(0, target_row)] == "full":
                     t_fill = self.color_shapes if is_neg else "white"
@@ -1547,20 +1756,53 @@ class SVGEditor:
         # Use same step for X and Y 
         step, _ = self.get_coords()
         if step <= 0: return
-        dx = dy = step
 
-        # Re-compute the padding
+        # Re-compute the padding and offset
         cw = self.canvas.winfo_width()
         ch = self.canvas.winfo_height()
-        grid_w = self.cols * dx
-        grid_h = self.rows * dy
-        offset_x = (cw - grid_w) / 2
-        offset_y = (ch - grid_h) / 2
+        grid_type = self.grid_type.get()
+        is_isometric = (grid_type == "isometric")
 
-        # Convert Mouse position to Grid position (col, row)
-        # - Substract the offset to have (0,0) as start of grid not start of canvas
-        col = round((event.x - offset_x) / dx)
-        row = round((event.y - offset_y) / dy)
+        if is_isometric:
+            # Calculate offset for isometric grid
+            corners = [
+                self._grid_to_iso(0, 0, step),
+                self._grid_to_iso(self.cols, 0, step),
+                self._grid_to_iso(self.cols, self.rows, step),
+                self._grid_to_iso(0, self.rows, step)
+            ]
+            min_x = min(c[0] for c in corners)
+            max_x = max(c[0] for c in corners)
+            min_y = min(c[1] for c in corners)
+            max_y = max(c[1] for c in corners)
+            
+            iso_w = max_x - min_x
+            iso_h = max_y - min_y
+            
+            offset_x = (cw - iso_w) / 2 - min_x
+            offset_y = (ch - iso_h) / 2 - min_y
+            
+            # Convert screen coordinates to isometric coordinates
+            iso_x = event.x - offset_x
+            iso_y = event.y - offset_y
+            
+            # Convert isometric coordinates to grid coordinates
+            col, row = self._iso_to_grid(iso_x, iso_y, step)
+        else:
+            # Orthogonal grid
+            dx = dy = step
+            grid_w = self.cols * dx
+            grid_h = self.rows * dy
+            offset_x = (cw - grid_w) / 2
+            offset_y = (ch - grid_h) / 2
+            
+            # Convert Mouse position to Grid position (col, row)
+            col = round((event.x - offset_x) / dx)
+            row = round((event.y - offset_y) / dy)
+
+        # Round to nearest integer for grid position
+        col = round(col)
+        row = round(row)
 
         # Check click is within Grid
         if 0 <= col <= self.cols and 0 <= row <= self.rows:
@@ -1609,14 +1851,41 @@ class SVGEditor:
         if available_w <= 0 or available_h <= 0:
             return 0, 0
 
-        # Compute max size of cells
-        max_dx = available_w / self.cols
-        max_dy = available_h / self.rows
-        
-        # Pick the minimum of the 2 to get a 1:1 ratio for each cells
-        step = min(max_dx, max_dy)
+        if self.grid_type.get() == "isometric":
+            # For isometric grid: vertical lines stay vertical, horizontal lines skewed at 30°
+            # Bounding box: width = cols * √3/2 * step
+            #              height = rows * step + cols * 0.5 * step
+            sqrt3 = math.sqrt(3)
+            max_step_w = available_w / (self.cols * sqrt3 / 2)
+            max_step_h = available_h / (self.rows + self.cols * 0.5)
+            step = min(max_step_w, max_step_h)
+        else:
+            # Compute max size of cells for orthogonal grid
+            max_dx = available_w / self.cols
+            max_dy = available_h / self.rows
+            
+            # Pick the minimum of the 2 to get a 1:1 ratio for each cells
+            step = min(max_dx, max_dy)
         
         return step, step
+
+    def _grid_to_iso(self, col, row, step):
+        """Convert grid coordinates (col, row) to isometric screen coordinates"""
+        # Isometric projection: vertical lines stay vertical
+        # Horizontal axis rotated by 30°, creating proper isometric depth effect
+        # iso_x = col * cos(30°) = col * √3/2 * step
+        # iso_y = row * step + col * sin(30°) = row * step + col * 0.5 * step
+        iso_x = col * step * math.sqrt(3) / 2
+        iso_y = row * step + col * step * 0.5
+        return iso_x, iso_y
+
+    def _iso_to_grid(self, iso_x, iso_y, step):
+        """Convert isometric screen coordinates back to grid coordinates (col, row)"""
+        # Inverse transformation
+        sqrt3 = math.sqrt(3)
+        col = iso_x * 2 / (step * sqrt3)
+        row = (iso_y - col * step * 0.5) / step
+        return col, row
 
     def update_grid_size(self):
         confirm = self._ask_custom_confirm(

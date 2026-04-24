@@ -1,6 +1,6 @@
 
 ---
-# 🔷 Grid-based Pattern Generator 🔷
+# 🔷 Grid-based Pattern Generator - V3.5 🔷
 ---
 
 This tool generates SVG files from patterns made of shapes and lines placed on a grid.
@@ -28,6 +28,7 @@ This tool generates SVG files from patterns made of shapes and lines placed on a
   - import and export the full collection as JSON
 - Grid and filling controls
   - set grid size by columns and rows
+  - set type of grid : orthogonal or isometric ** NEW **
   - clear the current canvas or reset the grid
   - fill the grid automatically following predefined rules (see [Grid filling options](#grid-filling-options))
 - Shape drawing tools
@@ -40,6 +41,7 @@ This tool generates SVG files from patterns made of shapes and lines placed on a
   - adjust line thickness and line color
 - Display options
   - show or hide the grid
+  - show or hide the shapes ** NEW **
   - show or hide drawn lines
   - crop exports to the active grid area
   - add an index marker with selectable positions (left, centred, right, edge)
@@ -96,14 +98,5 @@ With the drawing tool selected:
 - to **remove a dot**, click on an existing dot
 
 ## 📤 SVG file generation
-Several SVG files may be generated depending on the selected export options.
-
-The primary SVG file contains the pattern drawn to fit a complete shape on the grid boundary.
-
-If the pattern contains shapes, the export does not include drawn lines by default.
-
-If the pattern contains only drawn lines, the export includes the line drawing.
-
-When the crop option is selected, an extra SVG file is generated with the `_cropped` suffix and contains the pattern cropped to the grid boundary.
-
-When both the grid and the lines are displayed, an extra SVG file is generated with the `_full` suffix and contains the shapes, lines, and grid, optionally cropped.
+SVG files generation is WYSIWYG ("What You See Is What You get") based except for the grid.
+If the grid is displayed, the primary file does not include the grid and a second SVG file including the grid is generated with the `_grid` suffix.
