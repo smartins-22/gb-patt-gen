@@ -89,8 +89,11 @@ LANGUAGES = {
         'import_confirm_txt':"L'importation va écraser la collection en cours.\nÊtes-vous sûr de vouloir continuer ?",
         'err_del_last' : "Il est impossible de supprimer le dernier motif de la collection.",
         'err_fill_opt' : "Pas de mode de remplissage défini",
+        'err_invalid_input' : "Entrée invalide",
         'clear_all_confirm_title' : "Effacer ?",
         'clear_all_confirm_txt' : "Effacer le canvas en cours ?\n",
+        'resize_confirm_title' : "Redimensionner ?",
+        'resize_confirm_txt' : "Redimensionner la grille va supprimer les éléments en dehors de la nouvelle grille.\nContinuer ?",
         'close_confirm_title': "Quitter",
         'close_confirm_txt': "Voulez-vous vraiment fermer l'application ?"
     },
@@ -169,8 +172,11 @@ LANGUAGES = {
         'import_confirm_txt':"The Import will overwrite current collection.\nContinue?",
         'err_del_last' : "It is not possible to delete the last pattern of the collection",
         'err_fill_opt' : "Fill option is missing",
+        'err_invalid_input' : "Invalid input",
         'clear_all_confirm_title' : "Clear ?",
         'clear_all_confirm_txt' : "Clear the canvas ?\n",
+        'resize_confirm_title' : "Resize ?",
+        'resize_confirm_txt' : "Resizing the grid will delete elements outside the new grid.\nContinue ?",
         'close_confirm_title': "Quit",
         'close_confirm_txt': "Do you really want to close the application?"    
     }
@@ -1888,16 +1894,81 @@ class SVGEditor:
         return col, row
 
     def update_grid_size(self):
-        confirm = self._ask_custom_confirm(
-            self.tr('clear_all_confirm_title'), 
-            self.tr('clear_all_confirm_txt')
-            )            
-        if confirm:
-            try: self.cols, self.rows = int(self.ent_cols.get()), int(self.ent_rows.get()); 
-            except: pass
-            self.pattern_shapes, self.pattern_lines, self.blocked_nodes, self.line_start_point = {}, set(), set(), None
-            self.save_to_collection(); self.draw_canvas()
-        return confirm
+        try: 
+            if (int(self.ent_cols.get()) >= 1 and int(self.ent_rows.get()) >= 1):
+                new_cols = int(self.ent_cols.get())
+                new_rows = int(self.ent_rows.get())
+                
+                # Grid is being reduced
+                if (new_cols < self.cols or new_rows < self.rows):
+                    # Check if any elements are in the removed area
+                    elements_in_removed_area = self._check_elements_in_removed_area(new_cols, new_rows)
+                    
+                    if elements_in_removed_area:
+                        # Elements exist in the removed area, ask for confirmation
+                        confirm = self._ask_custom_confirm(
+                            self.tr('resize_confirm_title'), 
+                            self.tr('resize_confirm_txt')
+                        )
+                        
+                        if confirm:
+                            # Remove only elements that are outside the new grid bounds
+                            self._remove_elements_outside_bounds(new_cols, new_rows)
+                            self.cols, self.rows = new_cols, new_rows
+                            self.show_grid.set(True) # Force grid display to help user visualize the new bounds after resizing
+                            self.save_to_collection(); self.draw_canvas()
+                        return
+                
+                # No elements in removed area, just update the grid
+                self.cols, self.rows = new_cols, new_rows
+                self.show_grid.set(True) # Force grid display to help user visualize the new bounds after resizing
+                self.save_to_collection(); self.draw_canvas()
+                return
+            else:
+                messagebox.showerror(self.tr('error'), self.tr('err_invalid_input'))
+                return
+
+        except:
+            messagebox.showerror(self.tr('error'), self.tr('err_invalid_input'))
+            return
+
+    def _check_elements_in_removed_area(self, new_cols, new_rows):
+        """Check if any shapes, lines, or blocked nodes are in the area being removed."""
+        # Check shapes
+        for (c, r) in self.pattern_shapes.keys():
+            if c > new_cols or r > new_rows:
+                return True
+        
+        # Check blocked nodes
+        for (c, r) in self.blocked_nodes:
+            if c > new_cols or r > new_rows:
+                return True
+        
+        # Check lines
+        for line in self.pattern_lines:
+            pts = list(line)
+            for (c, r) in pts:
+                if c > new_cols or r > new_rows:
+                    return True
+        
+        return False
+
+    def _remove_elements_outside_bounds(self, new_cols, new_rows):
+        """Remove shapes, lines, and blocked nodes that are outside the new grid bounds."""
+        # Remove shapes outside bounds
+        shapes_to_remove = [key for key in self.pattern_shapes.keys() if key[0] > new_cols or key[1] > new_rows]
+        for key in shapes_to_remove:
+            del self.pattern_shapes[key]
+        
+        # Remove blocked nodes outside bounds
+        self.blocked_nodes = {(c, r) for (c, r) in self.blocked_nodes if c <= new_cols and r <= new_rows}
+        
+        # Remove lines outside bounds
+        lines_to_remove = [line for line in self.pattern_lines 
+                          for (c, r) in list(line) if c > new_cols or r > new_rows]
+        for line in lines_to_remove:
+            self.pattern_lines.discard(line)
+
 
     def fill_all_shapes(self):
         def get_dist(p1, p2): return math.sqrt((p2[0]-p1[0])**2 + (p2[1]-p1[1])**2)
