@@ -11,7 +11,7 @@ import re
 ####
 ###########################################################################################################
 
-VERSION="3.5"
+VERSION="3.6"
 
 LANGUAGES = {
     'fr': {
@@ -31,11 +31,12 @@ LANGUAGES = {
         'apply_grid' : "Appliquer",
         'fill_all' : "Remplir la grille",
         'fill_options' : "Option de remplissage",
-        'fill_info_title': "Aide Remplissage",
-        'fill_info_header': "Options de remplissage :",
-        'fill_opt_a': "A : Remplissage des vides AVEC détection de boucle",
-        'fill_opt_b': "B : Remplissage des vides SANS détection de boucle",
-        'fill_opt_c': "C : Remplissage total si contour actif sinon Option B",
+        'fill_free': "Libre",
+        'fill_occupied': "Occupé",
+        'fill_loop': "Boucle",
+        'fill_style_plain': "Plein",
+        'fill_style_outline': "Contour",
+        'fill_style_void': "Vide",
         'erase_all' : "Effacer Tout",
         'label_tools' : "OUTILS",
         'tool_shapes': "Formes",
@@ -88,7 +89,6 @@ LANGUAGES = {
         'import_confirm_title' : "Confirmation de l'import",
         'import_confirm_txt':"L'importation va écraser la collection en cours.\nÊtes-vous sûr de vouloir continuer ?",
         'err_del_last' : "Il est impossible de supprimer le dernier motif de la collection.",
-        'err_fill_opt' : "Pas de mode de remplissage défini",
         'err_invalid_input' : "Entrée invalide",
         'clear_all_confirm_title' : "Effacer ?",
         'clear_all_confirm_txt' : "Effacer le canvas en cours ?\n",
@@ -114,11 +114,12 @@ LANGUAGES = {
         'apply_grid' : "Apply",
         'fill_all' : "Fill the grid",
         'fill_options' : "Filling options",
-        'fill_info_title': "Filling Help",
-        'fill_info_header': "Filling options:",
-        'fill_opt_a': "A: Fill voids WITH loop detection",
-        'fill_opt_b': "B: Fill voids WITHOUT loop detection",
-        'fill_opt_c': "C: Fill all if outline active, otherwise Option B",
+        'fill_free': "Free",
+        'fill_occupied': "Occupied",
+        'fill_loop': "Loop",
+        'fill_style_plain': "Plain",
+        'fill_style_outline': "Outlined",
+        'fill_style_void': "Void",
         'erase_all' : "Erase all",
         'label_tools' : "TOOLS",
         'tool_shapes': "Shapes",
@@ -171,7 +172,6 @@ LANGUAGES = {
         'import_confirm_title' : "Import?",
         'import_confirm_txt':"The Import will overwrite current collection.\nContinue?",
         'err_del_last' : "It is not possible to delete the last pattern of the collection",
-        'err_fill_opt' : "Fill option is missing",
         'err_invalid_input' : "Invalid input",
         'clear_all_confirm_title' : "Clear ?",
         'clear_all_confirm_txt' : "Clear the canvas ?\n",
@@ -212,6 +212,16 @@ class SVGEditor:
         self.negative_mode = tk.BooleanVar(value=False)
         self.fill_mode = tk.StringVar(value="A")
         self.use_outlined_shape = tk.BooleanVar(value=True)
+        
+        # -- Fill styles for each node type (free, occupied, loop)
+        self.fill_styles_available = ["plain", "outline", "void"]
+        self.current_fill_style_free = "plain"
+        self.current_fill_style_occupied = "void"
+        self.current_fill_style_loop = "outline"
+        self.fill_style_free = tk.StringVar()
+        self.fill_style_occupied = tk.StringVar()
+        self.fill_style_loop = tk.StringVar()
+
 
         # -- Tool settings
         self.active_tool = tk.StringVar(value="line")
@@ -386,31 +396,103 @@ class SVGEditor:
         self.txt_fill_options=tk.StringVar(value=self.tr('fill_options'))
         tk.Label(self.cntrl, textvariable=self.txt_fill_options, bg="#f1f3f5", 
                  font=('Arial', 8, 'bold')).pack(anchor=tk.W, pady=(5, 0))
-        f_fill_row = tk.Frame(self.cntrl, bg="#f1f3f5")
-        f_fill_row.pack(fill=tk.X, pady=(0, 5))
-        #     - Radio button for option selection
-        for opt in ["A", "B", "C"]:
-            tk.Radiobutton(f_fill_row, text=opt, variable=self.fill_mode, 
-                           value=opt, command=self._ui_update_and_save, 
-                           bg="#f1f3f5", font=('Arial', 9)).pack(side=tk.LEFT, padx=(0, 10))
-
-        #     - Info button : Creation
-        btn_info = tk.Label(f_fill_row, text="i", 
-                            font=('Georgia', 9, 'italic', 'bold'),
-                            bg="#f1f3f5",         # Main panel background
-                            fg="#000000",         
-                            width=2, 
-                            relief="flat",
-                            highlightthickness=1,
-                            highlightbackground="#b2bec3",
-                            cursor="hand2")
-        btn_info.pack(side=tk.RIGHT, pady=2)
-        #     - Info button : On Click action
-        btn_info.bind("<Button-1>", lambda e: self.show_fill_info()) 
-        #     - Info button : Flying over behavior
-        btn_info.bind("<Enter>", lambda e: btn_info.config(highlightbackground="#0984e3", fg="#0984e3", bg="white"))
-        btn_info.bind("<Leave>", lambda e: btn_info.config(highlightbackground="#b2bec3", fg="#000000", bg="#f1f3f5"))
-    
+        
+        # Fill style dropdowns - 2 rows x 3 columns layout
+        
+        # Container for fill style options
+        f_fill_container = tk.Frame(self.cntrl, bg="#f1f3f5")
+        f_fill_container.pack(fill=tk.X, pady=(2, 5))
+        
+        # Row 1: Labels
+        f_fill_labels = tk.Frame(f_fill_container, bg="#f1f3f5")
+        f_fill_labels.pack(fill=tk.X)
+        f_fill_labels.grid_columnconfigure(0, weight=1, uniform="fill_col")
+        f_fill_labels.grid_columnconfigure(1, weight=1, uniform="fill_col")
+        f_fill_labels.grid_columnconfigure(2, weight=1, uniform="fill_col")
+        
+        self.txt_fill_free_label = tk.StringVar(value=self.tr('fill_free'))
+        tk.Label(f_fill_labels, textvariable=self.txt_fill_free_label, bg="#f1f3f5", font=('Arial', 8)).grid(row=0, column=0, padx=2)
+        
+        self.txt_fill_occupied_label = tk.StringVar(value=self.tr('fill_occupied'))
+        tk.Label(f_fill_labels, textvariable=self.txt_fill_occupied_label, bg="#f1f3f5", font=('Arial', 8)).grid(row=0, column=1, padx=2)
+        
+        self.txt_fill_loop_label = tk.StringVar(value=self.tr('fill_loop'))
+        tk.Label(f_fill_labels, textvariable=self.txt_fill_loop_label, bg="#f1f3f5", font=('Arial', 8)).grid(row=0, column=2, padx=2)
+        
+        # Row 2: Dropdowns
+        f_fill_dropdowns = tk.Frame(f_fill_container, bg="#f1f3f5")
+        f_fill_dropdowns.pack(fill=tk.X)
+        f_fill_dropdowns.grid_columnconfigure(0, weight=1, uniform="fill_col")
+        f_fill_dropdowns.grid_columnconfigure(1, weight=1, uniform="fill_col")
+        f_fill_dropdowns.grid_columnconfigure(2, weight=1, uniform="fill_col")
+        
+        translated_fill_styles = [self.tr(f"fill_style_{style}") for style in self.fill_styles_available]
+        self.fill_style_free.set(self.tr(f"fill_style_{self.current_fill_style_free}"))
+        self.dd_fill_free = tk.OptionMenu(f_fill_dropdowns, self.fill_style_free, *translated_fill_styles, command=self._on_fill_style_free_menu_change)
+        self.dd_fill_free.config(
+            width=12,
+            anchor="center",
+            font=('Lucida Console', 8), # Use mono-spaced font to preserve icon alignment
+            bg="white",
+            activebackground="#e1e1e1",
+            relief="groove",
+            highlightthickness=0,
+            indicatoron=False # Disable menu arrow 
+        )
+        menu_interne = self.dd_fill_free["menu"]
+        menu_interne.config(
+            font=('Lucida Console', 8),
+            bg="white",
+            activebackground="#f0f0f0",
+            activeforeground="black",
+            tearoff=0
+        )
+        self.dd_fill_free.grid(row=0, column=0, padx=2, sticky="ew")
+        
+        self.fill_style_occupied.set(self.tr(f"fill_style_{self.current_fill_style_occupied}"))
+        self.dd_fill_occupied = tk.OptionMenu(f_fill_dropdowns, self.fill_style_occupied, *translated_fill_styles, command=self._on_fill_style_occupied_menu_change)
+        self.dd_fill_occupied.config(
+            width=12,
+            anchor="center",
+            font=('Lucida Console', 8), # Use mono-spaced font to preserve icon alignment
+            bg="white",
+            activebackground="#e1e1e1",
+            relief="groove",
+            highlightthickness=0,
+            indicatoron=False # Disable menu arrow 
+        )
+        menu_interne = self.dd_fill_occupied["menu"]
+        menu_interne.config(
+            font=('Lucida Console', 8),
+            bg="white",
+            activebackground="#f0f0f0",
+            activeforeground="black",
+            tearoff=0
+        )
+        self.dd_fill_occupied.grid(row=0, column=1, padx=2, sticky="ew")
+        
+        self.fill_style_loop.set(self.tr(f"fill_style_{self.current_fill_style_loop}"))
+        self.dd_fill_loop = tk.OptionMenu(f_fill_dropdowns, self.fill_style_loop, *translated_fill_styles, command=self._on_fill_style_loop_menu_change)
+        self.dd_fill_loop.config(
+            width=12,
+            anchor="center",
+            font=('Lucida Console', 8), # Use mono-spaced font to preserve icon alignment
+            bg="white",
+            activebackground="#e1e1e1",
+            relief="groove",
+            highlightthickness=0,
+            indicatoron=False # Disable menu arrow 
+        )
+        menu_interne = self.dd_fill_loop["menu"]
+        menu_interne.config(
+            font=('Lucida Console', 8),
+            bg="white",
+            activebackground="#f0f0f0",
+            activeforeground="black",
+            tearoff=0
+        )
+        self.dd_fill_loop.grid(row=0, column=2, padx=2, sticky="ew")
+           
         self.txt_erase_all=tk.StringVar(value=self.tr('erase_all'))
         tk.Button(self.cntrl, textvariable=self.txt_erase_all, command=self.clear_all, bg="#fab1a0").pack(fill=tk.X, pady=5)
 
@@ -762,15 +844,6 @@ class SVGEditor:
         self.root.wait_window(dialog)
         return result["value"]
     
-    def show_fill_info(self):
-        info_text = (
-            f"{self.tr('fill_info_header')}\n\n"
-            f"{self.tr('fill_opt_a')}\n"
-            f"{self.tr('fill_opt_b')}\n"
-            f"{self.tr('fill_opt_c')}"
-        )
-        messagebox.showinfo(self.tr('fill_info_title'), info_text)
-
     def toggle_outline(self):
         self.use_outlined_shape.set(not self.use_outlined_shape.get())
         self._sync_btn_outline()
@@ -824,6 +897,34 @@ class SVGEditor:
         self.txt_grid_iso.set(self.tr('grid_isometric'))
         self.txt_fill_all.set(self.tr('fill_all'))
         self.txt_fill_options.set(self.tr('fill_options'))
+        self.txt_fill_free_label.set(self.tr('fill_free'))
+        self.txt_fill_occupied_label.set(self.tr('fill_occupied'))
+        self.txt_fill_loop_label.set(self.tr('fill_loop'))
+        # Update Fill Style Option Menus
+        self.fill_style_free.set(self.tr(f"fill_style_{self.current_fill_style_free}"))
+        menu = self.dd_fill_free["menu"]
+        menu.delete(0, "end")
+        for style in self.fill_styles_available:
+            label = self.tr(f"fill_style_{style}")
+            menu.add_command(label=label, 
+                             command=lambda l=label: self.om_fill_style_free_set(l))
+
+        self.fill_style_occupied.set(self.tr(f"fill_style_{self.current_fill_style_occupied}"))
+        menu = self.dd_fill_occupied["menu"]
+        menu.delete(0, "end")
+        for style in self.fill_styles_available:
+            label = self.tr(f"fill_style_{style}")
+            menu.add_command(label=label, 
+                             command=lambda l=label: self.om_fill_style_occupied_set(l))
+
+        self.fill_style_loop.set(self.tr(f"fill_style_{self.current_fill_style_loop}"))
+        menu = self.dd_fill_loop["menu"]
+        menu.delete(0, "end")
+        for style in self.fill_styles_available:
+            label = self.tr(f"fill_style_{style}")
+            menu.add_command(label=label, 
+                             command=lambda l=label: self.om_fill_style_loop_set(l))
+
         self.txt_erase_all.set(self.tr('erase_all'))
 
         self.txt_rb_shape.set(self.tr("tool_shapes"))       
@@ -887,6 +988,18 @@ class SVGEditor:
         self.index_pos_var.set(label)
         self._on_index_pos_menu_change(label)
 
+    def om_fill_style_free_set(self, label):
+        self.fill_style_free.set(label)
+        self._on_fill_style_free_menu_change(label)
+
+    def om_fill_style_occupied_set(self, label):
+        self.fill_style_occupied.set(label)
+        self._on_fill_style_occupied_menu_change(label)
+
+    def om_fill_style_loop_set(self, label):
+        self.fill_style_loop.set(label)
+        self._on_fill_style_loop_menu_change(label)
+
     def _on_language_change(self, selected_lang):
         # Save previous language default pattern name before switching
         prev_default_pattern_name=self.tr('default_pattern_name')
@@ -918,7 +1031,8 @@ class SVGEditor:
         return {
             "cols": self.cols, "rows": self.rows, "shape_ratio": self.shape_size_ratio.get(), "stroke_pct": self.shape_stroke_pct.get(), "use_outline": True,
             "line_sw": self.line_stroke_width.get(), "c_shapes": self.color_shapes, "c_lines": self.color_lines,
-            "neg": self.negative_mode.get(), "tool": self.current_shape_id, "shapes": {}, "lines": set(), "blocked_nodes": set(), "grid_type": self.grid_type.get()
+            "neg": self.negative_mode.get(), "tool": self.current_shape_id, "shapes": {}, "lines": set(), "blocked_nodes": set(), "grid_type": self.grid_type.get(),
+            "fill_style_free": self.current_fill_style_free, "fill_style_occupied": self.current_fill_style_occupied, "fill_style_loop": self.current_fill_style_loop
         }
     
     def _ui_update_and_save(self, _=None):
@@ -970,6 +1084,29 @@ class SVGEditor:
             # Save 
             self._change_tool_and_save()
 
+    def _on_fill_style_free_menu_change(self, display_value):
+        # Retrive technical value
+        for pid in self.fill_styles_available:
+            if self.tr(f"fill_style_{pid}") == display_value:
+                self.current_fill_style_free = pid
+                break
+        self._ui_update_and_save()
+
+    def _on_fill_style_occupied_menu_change(self, display_value):
+        # Retrive technical value
+        for pid in self.fill_styles_available:
+            if self.tr(f"fill_style_{pid}") == display_value:
+                self.current_fill_style_occupied = pid
+                break
+        self._ui_update_and_save()
+
+    def _on_fill_style_loop_menu_change(self, display_value):
+        # Retrive technical value
+        for pid in self.fill_styles_available:
+            if self.tr(f"fill_style_{pid}") == display_value:
+                self.current_fill_style_loop = pid
+                break
+        self._ui_update_and_save()
 
     def _on_index_pos_menu_change(self, display_value):
         # Enable Index display
@@ -1032,7 +1169,10 @@ class SVGEditor:
             "shapes": self.pattern_shapes.copy(), 
             "lines": self.pattern_lines.copy(),
             "blocked_nodes":self.blocked_nodes.copy(),
-            "grid_type": self.grid_type.get()
+            "grid_type": self.grid_type.get(),
+            "fill_style_free": self.current_fill_style_free,
+            "fill_style_occupied": self.current_fill_style_occupied,
+            "fill_style_loop": self.current_fill_style_loop
         }
 
     def load_pattern_from_collection(self, name):
@@ -1056,6 +1196,10 @@ class SVGEditor:
         self.pattern_shapes, self.pattern_lines = d["shapes"].copy(), d["lines"].copy()
         self.blocked_nodes = d.get("blocked_nodes", set()).copy()
         self.grid_type.set(d.get("grid_type", "orthogonal"))
+        # Load fill styles with defaults for backward compatibility
+        self.current_fill_style_free = d.get("fill_style_free", "plain")
+        self.current_fill_style_occupied = d.get("fill_style_occupied", "void")
+        self.current_fill_style_loop = d.get("fill_style_loop", "outline")
         self.btn_col_shapes.config(bg=self.color_shapes)
         self.btn_col_lines.config(bg=self.color_lines)
         self._sync_btn_neg()
@@ -1979,6 +2123,12 @@ class SVGEditor:
         # Remove existing shapes to recompute all shapes
         self.clear_shapes()
 
+        # If outline style is selected for any type of node but not enabled, enable it
+        if (self.current_fill_style_occupied == "outline" or self.current_fill_style_free == "outline" or self.current_fill_style_loop == "outline")\
+            and not self.use_outlined_shape.get():
+            self.toggle_outline()
+
+
         # Get occupied node list
         occ = set()
         for r in range(self.rows + 1):
@@ -2009,26 +2159,28 @@ class SVGEditor:
                             blk = True; break
                     if not blk: stack.append(n)
         
-        # Fill with selected fill method
-        fill_mode=self.fill_mode.get()
+        # Fill with selected fill styles
         for r in range(self.rows + 1):
             for c in range(self.cols + 1):
                 p = (c, r)
-                if fill_mode == "A":
-                    # Fill non occupied node and use outlined shapes for enclosed points
-                    if p not in occ: self.pattern_shapes[p] = "outline" if p not in out and self.use_outlined_shape.get() else "full"
-                elif fill_mode == "B":
-                    # Fill non occupied node with plain shapes
-                    if p not in occ: self.pattern_shapes[p] = "full"
-                elif fill_mode == "C":
-                    # Fill non occupied node with plain shapes
-                    if p not in occ: 
-                        self.pattern_shapes[p] = "full"
-                    # Fill occupied node with outlined shaped if enabled
-                    elif self.use_outlined_shape.get():
-                        self.pattern_shapes[p] = "outline"
+                
+                # Determine node type and apply corresponding fill style
+                if p in occ:
+                    # Occupied node
+                    fill_style = self.current_fill_style_occupied
+                elif p in out:
+                    # Free node (outside enclosed areas)
+                    fill_style = self.current_fill_style_free
                 else:
-                    messagebox.showerror(self.tr('error'),self.tr('err_fill_opt') )
+                    # Loop node (inside enclosed areas)
+                    fill_style = self.current_fill_style_loop
+
+                # Apply fill style (skip if 'void')
+                if fill_style == "plain":
+                    self.pattern_shapes[p] = "full"
+                elif fill_style == "outline":
+                    self.pattern_shapes[p] = "outline"
+                # If fill_style == "void", don't add to pattern_shapes
 
         self.save_to_collection(); self.draw_canvas()
     #--------------------------------------------------------------------------------------------------------

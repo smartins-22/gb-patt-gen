@@ -1,6 +1,6 @@
 
 ---
-# 🔷 Grid-based Pattern Generator - V3.5 🔷
+# 🔷 Grid-based Pattern Generator - V3.6 🔷
 ---
 
 This tool generates SVG files from patterns made of shapes and lines placed on a grid.
@@ -30,7 +30,7 @@ This tool generates SVG files from patterns made of shapes and lines placed on a
   - set grid size by columns and rows
   - set type of grid : orthogonal or isometric ** NEW **
   - clear the current canvas or reset the grid
-  - fill the grid automatically following predefined rules (see [Grid filling options](#grid-filling-options))
+  - fill the grid automatically following custom rules (see [Grid filling options](#grid-filling-options)) ** NEW **
 - Shape drawing tools
   - place circle or square shapes at grid nodes
   - toggle between outlined and filled shapes
@@ -68,19 +68,17 @@ Within the pattern list:
 ---
 # 🔬 Detailed features
 
-## 🔳 Grid filling options
-The tool supports an autofill feature to place shapes on nodes that are not occupied by a line or a dot.
-There are three filling rules currently available:
-- A: fill empty cells with loop detection
-    - all unoccupied nodes are filled with the selected shape
-    - nodes enclosed by lines are filled with outlined/hollow shapes if enabled
-- B: fill empty cells without loop detection
-    - all unoccupied nodes are filled with the selected shape
-- C: fill all cells or outline occupied cells depending on mode
-    - if outlined shapes are disabled, this behaves like option B
-    - otherwise, all nodes of the grid are filled with the selected shape:
-        - unoccupied nodes with full/plain shapes
-        - occupied nodes with outlined/hollow shapes
+## 🔳 Custom grid filling options ** NEW **
+The tool supports an autofill feature to place shapes on nodes following custom rules.\
+There are three type of node:
+- *free*: node unoccupied by a line or a dot
+- *occupied*: node already occupied by a line or a dot
+- *loop*: node included into a loop formed by lines and/or dots
+
+For any type of node, the filling option could be configured to:
+- *void*: leave or make empty the node
+- *plain*: add a plain shape on the node
+- *outlined*: add an outlined shape on the node
 
 ## ⚒ Tool usage
 ### 🔵 Shape tool
@@ -98,5 +96,5 @@ With the drawing tool selected:
 - to **remove a dot**, click on an existing dot
 
 ## 📤 SVG file generation
-SVG files generation is WYSIWYG ("What You See Is What You get") based except for the grid.
+SVG files generation is WYSIWYG ("What You See Is What You get") based except for the grid.\
 If the grid is displayed, the primary file does not include the grid and a second SVG file including the grid is generated with the `_grid` suffix.
