@@ -81,6 +81,8 @@ LANGUAGES = {
         'copy_patt_txt' : "Nom de la copie :",
         'del_patt_confirm_title' : "Supprime ?",
         'del_patt_confirm_txt' : "Êtes-vous sûr de vouloir supprimer définitivement\nle motif '{}' ?",
+        'del_multi_patt_confirm_title' : "Supprimer ?",
+        'del_multi_patt_confirm_txt' : "Êtes-vous sûr de vouloir supprimer définitivement\ntous les motifs sélectionnés ({})?",
         'btn_yes' : "Oui",
         'btn_no' : "Non",
         'btn_ok' : "OK",
@@ -88,7 +90,6 @@ LANGUAGES = {
         'warning': "Attention",
         'import_confirm_title' : "Confirmation de l'import",
         'import_confirm_txt':"L'importation va écraser la collection en cours.\nÊtes-vous sûr de vouloir continuer ?",
-        'err_del_last' : "Il est impossible de supprimer le dernier motif de la collection.",
         'err_invalid_input' : "Entrée invalide",
         'clear_all_confirm_title' : "Effacer ?",
         'clear_all_confirm_txt' : "Effacer le canvas en cours ?\n",
@@ -164,6 +165,8 @@ LANGUAGES = {
         'copy_patt_txt' : "Name of the copy:",
         'del_patt_confirm_title' : "Delete?",
         'del_patt_confirm_txt' : "Are you sure you want to delete\nthe pattern '{}'?",
+        'del_multi_patt_confirm_title' : "Delete?",
+        'del_multi_patt_confirm_txt' : "Are you sure you want to delete\nall the selected patterns ({})?",
         'btn_yes' : "Yes",
         'btn_no' : "No",
         'btn_ok' : "OK",
@@ -171,7 +174,6 @@ LANGUAGES = {
         'warning': "Warning",
         'import_confirm_title' : "Import?",
         'import_confirm_txt':"The Import will overwrite current collection.\nContinue?",
-        'err_del_last' : "It is not possible to delete the last pattern of the collection",
         'err_invalid_input' : "Invalid input",
         'clear_all_confirm_title' : "Clear ?",
         'clear_all_confirm_txt' : "Clear the canvas ?\n",
@@ -1066,6 +1068,11 @@ class SVGEditor:
             self.rb_shape.config(value=tool_value)
             self.om_shape_set(self.tr(f"shape_{tool_value}"))
 
+    def _sync_fill_style(self):
+        self.om_fill_style_free_set(self.tr(f"fill_style_{self.current_fill_style_free}"))
+        self.om_fill_style_occupied_set(self.tr(f"fill_style_{self.current_fill_style_occupied}"))
+        self.om_fill_style_loop_set(self.tr(f"fill_style_{self.current_fill_style_loop}"))
+
     def _on_shape_menu_change(self, display_value):
         # Convert displayed value to usable one
         # by finding the proper name matching
@@ -1204,6 +1211,7 @@ class SVGEditor:
         self.btn_col_lines.config(bg=self.color_lines)
         self._sync_btn_neg()
         self._sync_btn_outline()
+        self._sync_fill_style()
         self.draw_canvas()
         self.title_var.set(self.tr("main_title").format(VERSION,self.current_pattern_name))
 
@@ -1221,6 +1229,9 @@ class SVGEditor:
             "stroke_pct": self.shape_stroke_pct.get(), "line_sw": self.line_stroke_width.get(),
             "c_shapes": self.color_shapes, "c_lines": self.color_lines,
             "neg": self.negative_mode.get(), "tool": master_tool,
+            "fill_style_free": self.current_fill_style_free, 
+            "fill_style_occupied": self.current_fill_style_occupied,
+            "fill_style_loop": self.current_fill_style_loop,
             "use_outline": use_outline, "grid_type": self.grid_type.get()
         }
 
@@ -1404,23 +1415,35 @@ class SVGEditor:
                 messagebox.showerror(self.tr('error'), self.tr('err_exists'))
 
     def delete_pattern(self):
-        # Check that this is not the last one
-        if len(self.order) > 1:
-            name_to_delete = self.current_pattern_name
-            
+        selected_indices = self.listbox.curselection()
+        if not selected_indices: return
+
+        if len(selected_indices) == 1: 
             # Ask confirmation
             confirm = self._ask_custom_confirm(
                 self.tr('del_patt_confirm_title'), 
-                self.tr('del_patt_confirm_txt').format(name_to_delete)
+                self.tr('del_patt_confirm_txt').format(self.current_pattern_name)
             )
-            # If OK, go ahead and delete
-            if confirm:
-                self.order.remove(name_to_delete)
-                del self.collection[name_to_delete]      
-                self.load_pattern_from_collection(self.order[0])
-                self.refresh_list()
-        else:
-            messagebox.showwarning(self.tr('warning'), self.tr('err_del_last'))
+
+        else:            
+            # Ask confirmation
+            confirm = self._ask_custom_confirm(
+                self.tr('del_multi_patt_confirm_title'), 
+                self.tr('del_multi_patt_confirm_txt').format(len(selected_indices))
+            )
+
+        # If OK, go ahead and delete
+        if confirm:
+            names_to_delete = [self.listbox.get(i) for i in selected_indices]
+            for name in names_to_delete:
+                self.order.remove(name)
+                del self.collection[name]
+            if len(self.order) == 0:
+                self.order = [self.tr("default_pattern_name")+" 1"]  # List to manage the order of items
+                self.collection = {self.tr("default_pattern_name") + " 1": self._get_blank_state()}
+            self.load_pattern_from_collection(self.order[0])
+            self.refresh_list()
+
 
     # Import / Export collection
     #----------------------------
