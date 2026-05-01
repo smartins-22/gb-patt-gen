@@ -11,7 +11,7 @@ import re
 ####
 ###########################################################################################################
 
-VERSION="3.6"
+VERSION="3.7"
 
 LANGUAGES = {
     'fr': {
@@ -96,7 +96,37 @@ LANGUAGES = {
         'resize_confirm_title' : "Redimensionner ?",
         'resize_confirm_txt' : "Redimensionner la grille va supprimer les éléments en dehors de la nouvelle grille.\nContinuer ?",
         'close_confirm_title': "Quitter",
-        'close_confirm_txt': "Voulez-vous vraiment fermer l'application ?"
+        'close_confirm_txt': "Voulez-vous vraiment fermer l'application ?",
+        'label_transform': "TRANSFORMER",
+        'transform_scale': "Redimensionner",
+        'transform_shift': "Translater",
+        'transform_copy_shift': "Copier & Translater",
+        'transform_symmetry': "Symétrie",
+        'dim_x': "X (Colonnes)",
+        'axis_x': "X (Horizontal)",
+        'dim_y': "Y (Lignes)",
+        'axis_y': "Y (Vertical)",
+        'op_multiply': "Multiplier",
+        'op_divide': "Diviser",
+        'scale_title': "Redimensionner le Motif",
+        'scale_dim_prompt': "Sélectionnez la dimension à transformer :",
+        'scale_op_prompt': "Opération :",
+        'scale_factor_prompt': "Facteur de redimensionnement (nombre entier) :",
+        'scale_confirm_title': "Redimensionner ?",
+        'scale_confirm_txt': "La transformation va supprimer toutes les formes.\nContinuer ?",
+        'shift_title': "Translater le Motif",
+        'shift_dim_prompt': "Sélectionnez la dimension de translation :",
+        'shift_step_prompt': "Pas du décalage (nombre entier) :",
+        'shift_confirm_title': "Translater ?",
+        'shift_confirm_txt': "La translation peut supprimer les éléments en dehors de la grille.\nContinuer ?",
+        'copy_shift_title': "Copier & Translater le Motif",
+        'copy_shift_dim_prompt': "Sélectionnez la dimension de copie & translation :",
+        'symmetry_title': "Symétrie du Motif",
+        'symmetry_dim_prompt': "Sélectionnez l'axe de symétrie :",
+        'err_value_too_small': "La valeur '{0}' est trop petite pour la dimension {1} (min : {2}).",
+        'err_value_too_large': "La valeur '{0}' est trop grande pour la dimension {1} (max : {2}).",
+        'err_factor_too_large': "Le facteur '{0}' est trop grand pour la dimension {1} (max : {2}).",
+        'transform_done': "Transformation terminée !"
     },
     'en': {
         'main_title': "Pattern Generator v{} | {}",
@@ -180,7 +210,37 @@ LANGUAGES = {
         'resize_confirm_title' : "Resize ?",
         'resize_confirm_txt' : "Resizing the grid will delete elements outside the new grid.\nContinue ?",
         'close_confirm_title': "Quit",
-        'close_confirm_txt': "Do you really want to close the application?"    
+        'close_confirm_txt': "Do you really want to close the application?",
+        'label_transform': "TRANSFORM",
+        'transform_scale': "Scale",
+        'transform_shift': "Shift",
+        'transform_copy_shift': "Copy & Shift",
+        'transform_symmetry': "Symmetry",
+        'dim_x': "X (Columns)",
+        'axis_x': "X (Horizontal)",
+        'dim_y': "Y (Rows)",
+        'axis_y': "Y (Vertical)",
+        'op_multiply': "Multiply",
+        'op_divide': "Divide",
+        'scale_title': "Scale Pattern",
+        'scale_dim_prompt': "Select dimension to scale:",
+        'scale_op_prompt': "Operation:",
+        'scale_factor_prompt': "Scale factor (must be integer):",
+        'scale_confirm_title': "Scale Pattern?",
+        'scale_confirm_txt': "Scaling will remove all shapes.\nContinue?",
+        'shift_title': "Shift Pattern",
+        'shift_dim_prompt': "Select dimension to shift:",
+        'shift_step_prompt': "Shift step (integer):",
+        'shift_confirm_title': "Shift Pattern?",
+        'shift_confirm_txt': "Shifting may remove elements outside the grid.\nContinue?",
+        'copy_shift_title': "Copy & Shift Pattern",
+        'copy_shift_dim_prompt': "Select dimension to copy & shift:",
+        'symmetry_title': "Mirror Pattern",
+        'symmetry_dim_prompt': "Select axis of symmetry:",
+        'err_value_too_small': "Value '{0}' is too small for dimension {1} (min : {2}).",
+        'err_value_too_large': "Value '{0}' is too large for dimension {1} (max : {2}).",
+        'err_factor_too_large': "Factor '{0}' is too large for the selected dimension {1} (max : {2}).",
+        'transform_done': "Transformation complete!"    
     }
 }
 
@@ -272,7 +332,7 @@ class SVGEditor:
         # --          LEFT PANEL         --
         # --   Collection Management     --
         # ---------------------------------       
-        self.left_panel = tk.Frame(self.root, width=240, bg="#dfe6e9", padx=10, pady=10)
+        self.left_panel = tk.Frame(self.root, width=260, bg="#dfe6e9", padx=10, pady=10)
         self.left_panel.pack(side=tk.LEFT, fill=tk.Y)
         self.left_panel.pack_propagate(False)
         
@@ -328,7 +388,7 @@ class SVGEditor:
         
         # Batch SVG generation
         self.txt_batch_svg_export=tk.StringVar(value=self.tr('batch_svg_export'))
-        tk.Button(self.left_panel, textvariable=self.txt_batch_svg_export, command=self.batch_export_svg, bg="#55efc4", font=('Arial', 9, 'bold')).pack(fill=tk.X, pady=(10,0))
+        tk.Button(self.left_panel, textvariable=self.txt_batch_svg_export, command=self.batch_export_svg, bg="#55efc4", font=('Arial', 10, 'bold')).pack(fill=tk.X, pady=5)
 
         # ---------------------------------
         # --       CENTRAL PANEL         --
@@ -336,7 +396,7 @@ class SVGEditor:
         # --------------------------------- 
 
         # --- Create the panel
-        self.cntrl = tk.Frame(self.root, padx=10, pady=10, bg="#f1f3f5", width=260)
+        self.cntrl = tk.Frame(self.root, padx=10, pady=5, bg="#f1f3f5", width=260)
         self.cntrl.pack(side=tk.LEFT, fill=tk.Y)
         self.cntrl.pack_propagate(False)
 
@@ -393,7 +453,7 @@ class SVGEditor:
         
         # -- Grid filling
         self.txt_fill_all=tk.StringVar(value=self.tr('fill_all'))
-        tk.Button(self.cntrl, textvariable=self.txt_fill_all, command=self.fill_all_shapes, bg="#dee2e6").pack(fill=tk.X, pady=(10,0))
+        tk.Button(self.cntrl, textvariable=self.txt_fill_all, command=self.fill_all_shapes, bg="#dee2e6").pack(fill=tk.X, pady=(5,0))
         #   - Filling option section
         self.txt_fill_options=tk.StringVar(value=self.tr('fill_options'))
         tk.Label(self.cntrl, textvariable=self.txt_fill_options, bg="#f1f3f5", 
@@ -676,11 +736,42 @@ class SVGEditor:
             tearoff=0
         )
 
+        # --- Transform section
+        # ---------------------------------
+        self._add_seperator()
+        
+        self.txt_label_transform=tk.StringVar(value=self.tr('label_transform'))
+        self._add_label_var(self.txt_label_transform)
+
+        # -- Transformation buttons
+        f_transform = tk.Frame(self.cntrl, bg="#f1f3f5")
+        f_transform.pack(fill=tk.X, pady=5)
+        f_transform.grid_columnconfigure((0, 1), weight=1, uniform="group_t")
+        
+        self.txt_scale = tk.StringVar(value=self.tr('transform_scale'))
+        tk.Button(f_transform, textvariable=self.txt_scale, command=self.transform_scale, 
+                  font=('Arial', 8)).grid(row=0, column=0, sticky="ew", padx=2)
+        
+        self.txt_shift = tk.StringVar(value=self.tr('transform_shift'))
+        tk.Button(f_transform, textvariable=self.txt_shift, command=self.transform_shift, 
+                  font=('Arial', 8)).grid(row=0, column=1, sticky="ew", padx=2)
+        
+        f_transform2 = tk.Frame(self.cntrl, bg="#f1f3f5")
+        f_transform2.pack(fill=tk.X, pady=2)
+        f_transform2.grid_columnconfigure((0, 1), weight=1, uniform="group_t")
+        
+        self.txt_copy_shift = tk.StringVar(value=self.tr('transform_copy_shift'))
+        tk.Button(f_transform2, textvariable=self.txt_copy_shift, command=self.transform_copy_shift, 
+                  font=('Arial', 8)).grid(row=0, column=0, sticky="ew", padx=2)
+        
+        self.txt_symmetry = tk.StringVar(value=self.tr('transform_symmetry'))
+        tk.Button(f_transform2, textvariable=self.txt_symmetry, command=self.transform_symmetry, 
+                  font=('Arial', 8)).grid(row=0, column=1, sticky="ew", padx=2)
 
         # --- Generate SVG button
         # ---------------------------------
         self.txt_gen_svg=tk.StringVar(value=self.tr('gen_svg'))
-        tk.Button(self.cntrl, textvariable=self.txt_gen_svg, command=self.export_svg, bg="#2ecc71", fg="white", font=('Arial', 10, 'bold'), pady=10).pack(side=tk.BOTTOM, fill=tk.X)
+        tk.Button(self.cntrl, textvariable=self.txt_gen_svg, command=self.export_svg, bg="#2ecc71", fg="white", font=('Arial', 10, 'bold')).pack(side=tk.BOTTOM, fill=tk.X, pady=10)
 
         # --- Canvas creation
         # ---------------------------------
@@ -810,7 +901,7 @@ class SVGEditor:
         
         dialog = tk.Toplevel(self.root)
         dialog.title(self.tr(title_key))
-        dialog.geometry("280x130")
+        dialog.geometry("320x130")
         dialog.resizable(False, False)
         dialog.transient(self.root)
         dialog.grab_set()
@@ -965,6 +1056,12 @@ class SVGEditor:
             label = self.tr(f"pos_{sid}")
             menu.add_command(label=label, 
                              command=lambda l=label: self.om_index_set(l))   
+        
+        self.txt_label_transform.set(self.tr('label_transform'))
+        self.txt_scale.set(self.tr('transform_scale'))
+        self.txt_shift.set(self.tr('transform_shift'))
+        self.txt_copy_shift.set(self.tr('transform_copy_shift'))
+        self.txt_symmetry.set(self.tr('transform_symmetry'))
         
         self.txt_gen_svg.set(self.tr('gen_svg'))
 
@@ -2137,6 +2234,492 @@ class SVGEditor:
             self.pattern_lines.discard(line)
 
 
+    #--------------------------------------------------------------------------------------------------------
+    #  Transformation Helper Methods
+    #--------------------------------------------------------------------------------------------------------
+    
+    def _ask_transformation_params(self, title_key, dim_prompt_key, op_prompt_key=None, value_prompt_key=None, value_default=None, min_val=None, max_val=None, sym=False):
+        """Combined dialog for transformation parameters: dimensions, operation, and/or integer values"""
+        self.root.update_idletasks()
+        result = {"dimensions": {"x": False, "y": False}, "operation": None, "values": {"x": None, "y": None}}
+        
+        # Calculate dialog height based on what's needed
+        height = 130  # Base height for dimension checkboxes
+        if op_prompt_key:
+            height += 60
+        if value_prompt_key:
+            height += 80
+        
+        dialog = tk.Toplevel(self.root)
+        dialog.title(self.tr(title_key))
+        dialog.geometry(f"340x{height}")
+        dialog.resizable(False, False)
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - 170
+        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - (height // 2)
+        dialog.geometry(f"+{x}+{y}")
+        
+        # Dimension selection (checkboxes to allow both)
+        tk.Label(dialog, text=self.tr(dim_prompt_key), anchor="w", justify=tk.LEFT, font=('Arial', 9, 'bold')).pack(fill=tk.X, padx=20, pady=(15, 5))
+        
+        dim_x_var = tk.BooleanVar(value=True)
+        dim_y_var = tk.BooleanVar(value=True)
+        f_dim = tk.Frame(dialog)
+        f_dim.pack(fill=tk.X, padx=20, pady=5)
+        tk.Checkbutton(f_dim, text=(self.tr('axis_x') if sym else self.tr('dim_x')), variable=dim_x_var).pack(side=tk.LEFT, padx=(0, 20))
+        tk.Checkbutton(f_dim, text=(self.tr('axis_y') if sym else self.tr('dim_y')), variable=dim_y_var).pack(side=tk.LEFT)
+        
+        # Operation selection (if needed)
+        op_var = tk.StringVar(value="multiply")
+        if op_prompt_key:
+            tk.Label(dialog, text=self.tr(op_prompt_key), anchor="w", justify=tk.LEFT, font=('Arial', 9)).pack(fill=tk.X, padx=20, pady=(10, 5))
+            f_op = tk.Frame(dialog)
+            f_op.pack(fill=tk.X, padx=20, pady=5)
+            tk.Radiobutton(f_op, text=self.tr('op_multiply'), variable=op_var, value="multiply").pack(side=tk.LEFT, padx=(0, 20))
+            tk.Radiobutton(f_op, text=self.tr('op_divide'), variable=op_var, value="divide").pack(side=tk.LEFT)
+        
+        # Integer value input (if needed) - separate entries for X and Y
+        value_entry_x = None
+        value_entry_y = None
+        if value_prompt_key:
+            tk.Label(dialog, text=self.tr(value_prompt_key), anchor="w", justify=tk.LEFT, font=('Arial', 9)).pack(fill=tk.X, padx=20, pady=(10, 5))
+            
+            # X and Y value fields
+            f_values = tk.Frame(dialog)
+            f_values.pack(fill=tk.X, padx=20, pady=5)
+            f_values.grid_columnconfigure(1, weight=1)
+            f_values.grid_columnconfigure(3, weight=1)
+            
+            tk.Label(f_values, text=self.tr('dim_x')+": ", font=('Arial', 8)).grid(row=0, column=0, sticky="w", padx=(0, 5))
+            value_entry_x = tk.Entry(f_values, width=8)
+            value_entry_x.insert(0, str(value_default if value_default is not None else 1))
+            value_entry_x.grid(row=0, column=1, sticky="ew", padx=(0, 15))
+            
+            tk.Label(f_values, text=self.tr('dim_y')+": ", font=('Arial', 8)).grid(row=0, column=2, sticky="w", padx=(0, 5))
+            value_entry_y = tk.Entry(f_values, width=8)
+            value_entry_y.insert(0, str(value_default if value_default is not None else 1))
+            value_entry_y.grid(row=0, column=3, sticky="ew")
+            
+            value_entry_x.focus_set()
+        
+        def validate():
+            if not dim_x_var.get() and not dim_y_var.get():
+                messagebox.showerror(self.tr('error'), "Please select at least one dimension")
+                return
+            
+            result["dimensions"]["x"] = dim_x_var.get()
+            result["dimensions"]["y"] = dim_y_var.get()
+            result["operation"] = op_var.get() if op_prompt_key else None
+            
+            if value_prompt_key:
+                try:
+                    if dim_x_var.get():
+                        val_x = int(value_entry_x.get().strip())
+                        if min_val is not None and val_x < min_val:
+                            messagebox.showerror(self.tr('error'), self.tr('err_value_too_small').format(val_x, 'X', min_val))
+                            return
+                        if max_val is not None and val_x > max_val:
+                            messagebox.showerror(self.tr('error'), self.tr('err_value_too_large').format(val_x, 'X', max_val))
+                            return
+                        result["values"]["x"] = val_x
+                    
+                    if dim_y_var.get():
+                        val_y = int(value_entry_y.get().strip())
+                        if min_val is not None and val_y < min_val:
+                            messagebox.showerror(self.tr('error'), self.tr('err_value_too_small').format(val_y, 'Y', min_val))
+                            return
+                        if max_val is not None and val_y > max_val:
+                            messagebox.showerror(self.tr('error'), self.tr('err_value_too_large').format(val_y, 'Y', max_val))
+                            return
+                        result["values"]["y"] = val_y
+                except ValueError:
+                    messagebox.showerror(self.tr('error'), self.tr('err_invalid_input'))
+                    return
+            
+            dialog.destroy()
+        
+        f_btns = tk.Frame(dialog)
+        f_btns.pack(fill=tk.X, padx=20, pady=15)
+        tk.Button(f_btns, text=self.tr('btn_ok'), width=9, command=validate, default=tk.ACTIVE).pack(side=tk.RIGHT, padx=(5, 0))
+        tk.Button(f_btns, text=self.tr('btn_cancel'), width=9, command=dialog.destroy).pack(side=tk.RIGHT)
+        
+        dialog.bind("<Return>", lambda e: validate())
+        dialog.bind("<Escape>", lambda e: dialog.destroy())
+        
+        self.root.wait_window(dialog)
+        return result["dimensions"], result["operation"], result["values"]
+
+    #--------------------------------------------------------------------------------------------------------
+    #  Transformation Methods
+    #--------------------------------------------------------------------------------------------------------
+    
+    def transform_scale(self):
+        """Scale the pattern by multiplying or dividing coordinates"""
+        dimensions, operation, factors = self._ask_transformation_params(
+            'scale_title', 'scale_dim_prompt', 'scale_op_prompt', 'scale_factor_prompt',
+            value_default=1, min_val=1
+        )
+        
+        if not any(dimensions.values()):  # Check if at least one dimension was selected
+            return
+        
+        # Validate factors against grid sizes
+        if dimensions["x"] and factors["x"] is not None:
+            if operation == "divide" and factors["x"] > self.cols:
+                messagebox.showerror(self.tr('error'), self.tr('err_factor_too_large').format(factors['x'], 'X', self.cols))
+                return
+        
+        if dimensions["y"] and factors["y"] is not None:
+            if operation == "divide" and factors["y"] > self.rows:
+                messagebox.showerror(self.tr('error'), self.tr('err_factor_too_large').format(factors['y'], 'Y', self.rows))
+                return
+        
+        # Save current state
+        self.save_to_collection()
+        
+        factor_x = factors["x"] if dimensions["x"] and factors["x"] is not None else 1
+        factor_y = factors["y"] if dimensions["y"] and factors["y"] is not None else 1
+        
+        if operation == "multiply":
+            # For multiplication: resize grid first, then scale
+            if dimensions["x"]:
+                self.cols *= factor_x
+            if dimensions["y"]:
+                self.rows *= factor_y
+        
+        # Scale the coordinates
+        new_shapes = {}
+        new_lines = set()
+        new_blocked = set()
+        
+        if operation == "multiply":
+            # Scale up
+            for (c, r), shape_type in self.pattern_shapes.items():
+                new_c = c * factor_x if dimensions["x"] else c
+                new_r = r * factor_y if dimensions["y"] else r
+                new_shapes[(new_c, new_r)] = shape_type
+            
+            for line in self.pattern_lines:
+                pts = list(line)
+                new_pts = []
+                for (c, r) in pts:
+                    new_c = c * factor_x if dimensions["x"] else c
+                    new_r = r * factor_y if dimensions["y"] else r
+                    new_pts.append((new_c, new_r))
+                new_lines.add(frozenset({tuple(new_pts[0]), tuple(new_pts[1])}))
+            
+            for (c, r) in self.blocked_nodes:
+                new_c = c * factor_x if dimensions["x"] else c
+                new_r = r * factor_y if dimensions["y"] else r
+                new_blocked.add((new_c, new_r))
+        
+        else:  # divide
+            # For division: scale first, then resize
+            for (c, r), shape_type in self.pattern_shapes.items():
+                new_c = c // factor_x if dimensions["x"] else c
+                new_r = r // factor_y if dimensions["y"] else r
+                new_shapes[(new_c, new_r)] = shape_type
+            
+            for line in self.pattern_lines:
+                pts = list(line)
+                new_pts = []
+                for (c, r) in pts:
+                    new_c = c // factor_x if dimensions["x"] else c
+                    new_r = r // factor_y if dimensions["y"] else r
+                    new_pts.append((new_c, new_r))
+                # Only add line if both points are different
+                if new_pts[0] != new_pts[1]:
+                    new_lines.add(frozenset({tuple(new_pts[0]), tuple(new_pts[1])}))
+            
+            for (c, r) in self.blocked_nodes:
+                new_c = c // factor_x if dimensions["x"] else c
+                new_r = r // factor_y if dimensions["y"] else r
+                new_blocked.add((new_c, new_r))
+            
+            # Resize grid after scaling
+            if dimensions["x"]:
+                self.cols = max(1, self.cols // factor_x)
+            if dimensions["y"]:
+                self.rows = max(1, self.rows // factor_y)
+        
+        # Update entries and state
+        self.pattern_shapes = new_shapes
+        self.pattern_lines = new_lines
+        self.blocked_nodes = new_blocked
+        self.ent_cols.delete(0, tk.END)
+        self.ent_cols.insert(0, str(self.cols))
+        self.ent_rows.delete(0, tk.END)
+        self.ent_rows.insert(0, str(self.rows))
+        
+        self.save_to_collection()
+        self.draw_canvas()
+        messagebox.showinfo(self.tr('label_transform'), self.tr('transform_done'))
+    
+    def transform_shift(self):
+        """Shift shapes and lines in a given dimension"""
+        # Ask for dimension and shift step in a single dialog
+        dimensions, _, steps = self._ask_transformation_params(
+            'shift_title', 'shift_dim_prompt', value_prompt_key='shift_step_prompt', value_default=0
+        )
+        
+        if not any(dimensions.values()) or (steps["x"] is None and steps["y"] is None):
+            return
+        
+        # Check if data will be lost for negative shifts
+        if steps["x"] < 0 or steps["y"] < 0:
+            will_lose_data = False
+            for (c, r) in self.pattern_shapes.keys():
+                if (dimensions["x"] and c + steps["x"] < 0) or (dimensions["y"] and r + steps["y"] < 0):
+                    will_lose_data = True
+                    break
+            
+            if not will_lose_data:
+                for line in self.pattern_lines:
+                    pts = list(line)
+                    for (c, r) in pts:
+                        if (dimensions["x"] and c + steps["x"] < 0) or (dimensions["y"] and r + steps["y"] < 0):
+                            will_lose_data = True
+                            break
+            
+            if will_lose_data and not self._ask_custom_confirm('shift_confirm_title', 'shift_confirm_txt'):
+                return
+        
+        # Save current state
+        self.save_to_collection()
+        
+        for dimension in ["x", "y"]:
+            if dimensions[dimension]:
+                # Shift shapes
+                new_shapes = {}
+                for (c, r), shape_type in self.pattern_shapes.items():
+                    if dimension == "x":
+                        new_c = c + steps["x"]
+                        new_r = r
+                    else:
+                        new_c = c
+                        new_r = r + steps["y"]
+                    
+                    # Only keep if within valid range
+                    if new_c >= 0 and new_r >= 0:
+                        new_shapes[(new_c, new_r)] = shape_type
+                
+                # Shift lines
+                new_lines = set()
+                for line in self.pattern_lines:
+                    pts = list(line)
+                    new_pts = []
+                    valid = True
+                    for (c, r) in pts:
+                        if dimension == "x":
+                            new_c = c + steps["x"]
+                            new_r = r
+                        else:
+                            new_c = c
+                            new_r = r + steps["y"] 
+                        
+                        if new_c < 0 or new_r < 0:
+                            valid = False
+                            break
+                        new_pts.append((new_c, new_r))
+                    
+                    if valid:
+                        new_lines.add(frozenset({tuple(new_pts[0]), tuple(new_pts[1])}))
+                
+                # Shift blocked nodes
+                new_blocked = set()
+                for (c, r) in self.blocked_nodes:
+                    if dimension == "x":
+                        new_c = c + steps["x"]
+                        new_r = r
+                    else:
+                        new_c = c
+                        new_r = r + steps["y"]
+                    
+                    if new_c >= 0 and new_r >= 0:
+                        new_blocked.add((new_c, new_r))
+                
+                # Resize grid for positive shift
+                if steps["x"] > 0 or steps["y"] > 0:
+                    if dimension == "x":
+                        self.cols += steps["x"]
+                    else:
+                        self.rows += steps["y"]
+                
+                # Update entries and state
+                self.pattern_shapes = new_shapes
+                self.pattern_lines = new_lines
+                self.blocked_nodes = new_blocked
+                self.ent_cols.delete(0, tk.END)
+                self.ent_cols.insert(0, str(self.cols))
+                self.ent_rows.delete(0, tk.END)
+                self.ent_rows.insert(0, str(self.rows))
+                
+                self.save_to_collection()
+                self.draw_canvas()
+        messagebox.showinfo(self.tr('label_transform'), self.tr('transform_done'))
+    
+    def transform_copy_shift(self):
+        """Copy and shift pattern in a dimension, doubling the grid"""
+        # Ask for dimension only
+        dimensions, _, _ = self._ask_transformation_params(
+            'copy_shift_title', 'copy_shift_dim_prompt'
+        )
+        
+        if not any(dimensions.values()):  # Check if at least one dimension was selected
+            return
+        
+        # Save current state
+        self.save_to_collection()
+        
+        for dimension in ["x", "y"]:
+            if dimensions[dimension]:
+
+                # Calculate shift distance (original grid size)
+                shift_dist = self.cols if dimension == "x" else self.rows
+                
+                # Double the grid in the selected dimension
+                if dimension == "x":
+                    new_cols = self.cols * 2
+                    new_rows = self.rows
+                else:
+                    new_cols = self.cols
+                    new_rows = self.rows * 2
+                
+                # Copy shapes
+                new_shapes = self.pattern_shapes.copy()
+                for (c, r), shape_type in self.pattern_shapes.items():
+                    if dimension == "x":
+                        new_c = c + shift_dist
+                        new_r = r
+                    else:
+                        new_c = c
+                        new_r = r + shift_dist
+                    new_shapes[(new_c, new_r)] = shape_type
+                
+                # Copy lines
+                new_lines = self.pattern_lines.copy()
+                for line in self.pattern_lines:
+                    pts = list(line)
+                    new_pts = []
+                    for (c, r) in pts:
+                        if dimension == "x":
+                            new_c = c + shift_dist
+                            new_r = r
+                        else:
+                            new_c = c
+                            new_r = r + shift_dist
+                        new_pts.append((new_c, new_r))
+                    new_lines.add(frozenset({tuple(new_pts[0]), tuple(new_pts[1])}))
+                
+                # Copy blocked nodes
+                new_blocked = self.blocked_nodes.copy()
+                for (c, r) in self.blocked_nodes:
+                    if dimension == "x":
+                        new_c = c + shift_dist
+                        new_r = r
+                    else:
+                        new_c = c
+                        new_r = r + shift_dist
+                    new_blocked.add((new_c, new_r))
+                
+                # Update state
+                self.cols = new_cols
+                self.rows = new_rows
+                self.pattern_shapes = new_shapes
+                self.pattern_lines = new_lines
+                self.blocked_nodes = new_blocked
+                self.ent_cols.delete(0, tk.END)
+                self.ent_cols.insert(0, str(self.cols))
+                self.ent_rows.delete(0, tk.END)
+                self.ent_rows.insert(0, str(self.rows))
+                
+                self.save_to_collection()
+                self.draw_canvas()
+        messagebox.showinfo(self.tr('label_transform'), self.tr('transform_done'))
+    
+    def transform_symmetry(self):
+        """Mirror pattern with axial symmetry, doubling the perpendicular dimension"""
+        # Ask for dimension only
+        dimensions, _, _ = self._ask_transformation_params(
+            'symmetry_title', 'symmetry_dim_prompt', sym=True
+        )
+        
+        if not any(dimensions.values()):  # Check if at least one dimension was selected
+            return
+               
+        # Save current state
+        self.save_to_collection()
+        
+        for dimension in ["x", "y"]:
+            if dimensions[dimension]:
+                # Double the grid in the perpendicular dimension
+                if dimension == "x":
+                    # Symmetry around X axis: mirror in Y direction
+                    new_cols = self.cols
+                    new_rows = self.rows * 2
+                    mirror_dim = "y"
+                    mirror_dist = self.rows
+                else:
+                    # Symmetry around Y axis: mirror in X direction
+                    new_cols = self.cols * 2
+                    new_rows = self.rows
+                    mirror_dim = "x"
+                    mirror_dist = self.cols
+                
+                # Copy original shapes and add mirrored shapes
+                new_shapes = self.pattern_shapes.copy()
+                for (c, r), shape_type in self.pattern_shapes.items():
+                    if mirror_dim == "x":
+                        new_c = mirror_dist * 2 - c
+                        new_r = r
+                    else:
+                        new_c = c
+                        new_r = mirror_dist * 2 - r
+                    new_shapes[(new_c, new_r)] = shape_type
+                
+                # Copy original lines and add mirrored lines
+                new_lines = self.pattern_lines.copy()
+                for line in self.pattern_lines:
+                    pts = list(line)
+                    new_pts = []
+                    for (c, r) in pts:
+                        if mirror_dim == "x":
+                            new_c = mirror_dist * 2 - c
+                            new_r = r
+                        else:
+                            new_c = c
+                            new_r = mirror_dist * 2 - r
+                        new_pts.append((new_c, new_r))
+                    new_lines.add(frozenset({tuple(new_pts[0]), tuple(new_pts[1])}))
+                
+                # Copy original blocked nodes and add mirrored blocked nodes
+                new_blocked = self.blocked_nodes.copy()
+                for (c, r) in self.blocked_nodes:
+                    if mirror_dim == "x":
+                        new_c = mirror_dist * 2 - c
+                        new_r = r
+                    else:
+                        new_c = c
+                        new_r = mirror_dist * 2 - r
+                    new_blocked.add((new_c, new_r))
+                
+                # Update state
+                self.cols = new_cols
+                self.rows = new_rows
+                self.pattern_shapes = new_shapes
+                self.pattern_lines = new_lines
+                self.blocked_nodes = new_blocked
+                self.ent_cols.delete(0, tk.END)
+                self.ent_cols.insert(0, str(self.cols))
+                self.ent_rows.delete(0, tk.END)
+                self.ent_rows.insert(0, str(self.rows))
+                
+                self.save_to_collection()
+                self.draw_canvas()
+        messagebox.showinfo(self.tr('label_transform'), self.tr('transform_done'))
+
     def fill_all_shapes(self):
         def get_dist(p1, p2): return math.sqrt((p2[0]-p1[0])**2 + (p2[1]-p1[1])**2)
         def intersect(a, b, c, d):
@@ -2212,4 +2795,4 @@ class SVGEditor:
  ###  MAIN
  ###--------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
-    root = tk.Tk(); root.geometry("1300x850"); SVGEditor(root); root.mainloop()
+    root = tk.Tk(); root.geometry("1400x900"); SVGEditor(root); root.mainloop()

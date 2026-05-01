@@ -1,6 +1,6 @@
 
 ---
-# 🔷 Grid-based Pattern Generator - V3.6 🔷
+# 🔷 Grid-based Pattern Generator - V3.7 🔷
 ---
 
 This tool generates SVG files from patterns made of shapes and lines placed on a grid.
@@ -28,9 +28,9 @@ This tool generates SVG files from patterns made of shapes and lines placed on a
   - import and export the full collection as JSON
 - Grid and filling controls
   - set grid size by columns and rows
-  - set type of grid : orthogonal or isometric ** NEW **
+  - set type of grid : orthogonal or isometric
   - clear the current canvas or reset the grid
-  - fill the grid automatically following custom rules (see [Grid filling options](#grid-filling-options)) ** NEW **
+  - fill the grid automatically following custom rules (see [Grid filling options](#grid-filling-options))
 - Shape drawing tools
   - place circle or square shapes at grid nodes
   - toggle between outlined and filled shapes
@@ -41,10 +41,14 @@ This tool generates SVG files from patterns made of shapes and lines placed on a
   - adjust line thickness and line color
 - Display options
   - show or hide the grid
-  - show or hide the shapes ** NEW **
+  - show or hide the shapes
   - show or hide drawn lines
   - crop exports to the active grid area
   - add an index marker with selectable positions (left, centred, right, edge)
+- Transformations ** NEW **
+  - enhance pattern creation by using scaling, shifting and symmetry
+  - see [Transformations](#-transformations--new-)
+ 
 - Export options
   - export the current pattern as SVG
   - batch export the full collection to SVG files
@@ -68,7 +72,15 @@ Within the pattern list:
 ---
 # 🔬 Detailed features
 
-## 🔳 Custom grid filling options ** NEW **
+## 🔁 Transformations ** NEW **
+The tool supports a couple of pattern transformation\
+There are four type of transformation:
+- *scale*: redimension the pattern by muliplying or dividing the grid size following one or two axis
+- *shift*: shift the complete pattern of custom steps following one or two axis
+- *copy & shift*: copy the pattern and shift it of one grid size in one or two dimension
+- *symmetry*: perform axial symmetry of the pattern following one or two axis
+
+## 🔳 Custom grid filling options
 The tool supports an autofill feature to place shapes on nodes following custom rules.\
 There are three type of node:
 - *free*: node unoccupied by a line or a dot
