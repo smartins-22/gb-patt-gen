@@ -126,7 +126,8 @@ LANGUAGES = {
         'err_value_too_small': "La valeur '{0}' est trop petite pour la dimension {1} (min : {2}).",
         'err_value_too_large': "La valeur '{0}' est trop grande pour la dimension {1} (max : {2}).",
         'err_factor_too_large': "Le facteur '{0}' est trop grand pour la dimension {1} (max : {2}).",
-        'transform_done': "Transformation terminée !"
+        'transform_done': "Transformation terminée !",
+        'filling_done': "Remplissage terminé !"
     },
     'en': {
         'main_title': "Pattern Generator v{} | {}",
@@ -240,7 +241,8 @@ LANGUAGES = {
         'err_value_too_small': "Value '{0}' is too small for dimension {1} (min : {2}).",
         'err_value_too_large': "Value '{0}' is too large for dimension {1} (max : {2}).",
         'err_factor_too_large': "Factor '{0}' is too large for the selected dimension {1} (max : {2}).",
-        'transform_done': "Transformation complete!"    
+        'transform_done': "Transformation complete!",
+        'filling_done': "Filling complete!"
     }
 }
 
@@ -859,7 +861,7 @@ class SVGEditor:
         
         dialog = tk.Toplevel(self.root)
         dialog.title(title)
-        dialog.geometry("280x130")
+        dialog.geometry("340x130")
         dialog.resizable(False, False)
         dialog.transient(self.root)
         dialog.grab_set()
@@ -901,7 +903,7 @@ class SVGEditor:
         
         dialog = tk.Toplevel(self.root)
         dialog.title(self.tr(title_key))
-        dialog.geometry("320x130")
+        dialog.geometry("340x130")
         dialog.resizable(False, False)
         dialog.transient(self.root)
         dialog.grab_set()
@@ -2355,8 +2357,31 @@ class SVGEditor:
     #  Transformation Methods
     #--------------------------------------------------------------------------------------------------------
     
+    def _apply_transform_to_multi(self, transform_name):
+        """Helper to apply transformation to multiple selected patterns"""
+        selected = self.listbox.curselection()
+        if len(selected) <= 1: return False
+        
+        saved_name = self.current_pattern_name
+        for idx in selected:
+            self.load_pattern_from_collection(self.listbox.get(idx))
+            self._apply_single_transform(transform_name)
+        self.load_pattern_from_collection(saved_name)
+        return True
+    
+    def _apply_single_transform(self, transform_name):
+        """Apply a single transformation to current pattern"""
+        if transform_name == "scale": self._do_transform_scale()
+        elif transform_name == "shift": self._do_transform_shift()
+        elif transform_name == "copy_shift": self._do_transform_copy_shift()
+        elif transform_name == "symmetry": self._do_transform_symmetry()
+    
     def transform_scale(self):
         """Scale the pattern by multiplying or dividing coordinates"""
+    
+        # Grab the selected patterns before losing mouse focus from the listbox to be able to apply the transformation on multiple patterns at once if needed
+        selected = self.listbox.curselection()
+
         dimensions, operation, factors = self._ask_transformation_params(
             'scale_title', 'scale_dim_prompt', 'scale_op_prompt', 'scale_factor_prompt',
             value_default=1, min_val=1
@@ -2365,101 +2390,72 @@ class SVGEditor:
         if not any(dimensions.values()):  # Check if at least one dimension was selected
             return
         
+        if len(selected) > 1:  # Multiple patterns selected
+            saved_name = self.current_pattern_name
+            for idx in selected:
+                self.load_pattern_from_collection(self.listbox.get(idx))
+                self._do_scale(dimensions, operation, factors)
+            self.load_pattern_from_collection(saved_name)
+            messagebox.showinfo(self.tr('label_transform'), self.tr('transform_done'))
+            return
+        
+        self._do_scale(dimensions, operation, factors)
+        messagebox.showinfo(self.tr('label_transform'), self.tr('transform_done'))
+    
+    def _do_scale(self, dimensions, operation, factors):
+        """Apply scale transformation to current pattern"""
         # Validate factors against grid sizes
         if dimensions["x"] and factors["x"] is not None:
             if operation == "divide" and factors["x"] > self.cols:
                 messagebox.showerror(self.tr('error'), self.tr('err_factor_too_large').format(factors['x'], 'X', self.cols))
                 return
-        
         if dimensions["y"] and factors["y"] is not None:
             if operation == "divide" and factors["y"] > self.rows:
                 messagebox.showerror(self.tr('error'), self.tr('err_factor_too_large').format(factors['y'], 'Y', self.rows))
                 return
         
-        # Save current state
         self.save_to_collection()
-        
         factor_x = factors["x"] if dimensions["x"] and factors["x"] is not None else 1
         factor_y = factors["y"] if dimensions["y"] and factors["y"] is not None else 1
+        new_shapes, new_lines, new_blocked = {}, set(), set()
         
         if operation == "multiply":
-            # For multiplication: resize grid first, then scale
-            if dimensions["x"]:
-                self.cols *= factor_x
-            if dimensions["y"]:
-                self.rows *= factor_y
-        
-        # Scale the coordinates
-        new_shapes = {}
-        new_lines = set()
-        new_blocked = set()
-        
-        if operation == "multiply":
-            # Scale up
+            if dimensions["x"]: self.cols *= factor_x
+            if dimensions["y"]: self.rows *= factor_y
             for (c, r), shape_type in self.pattern_shapes.items():
-                new_c = c * factor_x if dimensions["x"] else c
-                new_r = r * factor_y if dimensions["y"] else r
-                new_shapes[(new_c, new_r)] = shape_type
-            
+                new_shapes[(c * factor_x if dimensions["x"] else c, r * factor_y if dimensions["y"] else r)] = shape_type
             for line in self.pattern_lines:
-                pts = list(line)
-                new_pts = []
-                for (c, r) in pts:
-                    new_c = c * factor_x if dimensions["x"] else c
-                    new_r = r * factor_y if dimensions["y"] else r
-                    new_pts.append((new_c, new_r))
-                new_lines.add(frozenset({tuple(new_pts[0]), tuple(new_pts[1])}))
-            
+                pts = [(c * factor_x if dimensions["x"] else c, r * factor_y if dimensions["y"] else r) for c, r in line]
+                new_lines.add(frozenset({tuple(pts[0]), tuple(pts[1])}))
             for (c, r) in self.blocked_nodes:
-                new_c = c * factor_x if dimensions["x"] else c
-                new_r = r * factor_y if dimensions["y"] else r
-                new_blocked.add((new_c, new_r))
-        
+                new_blocked.add((c * factor_x if dimensions["x"] else c, r * factor_y if dimensions["y"] else r))
         else:  # divide
-            # For division: scale first, then resize
             for (c, r), shape_type in self.pattern_shapes.items():
-                new_c = c // factor_x if dimensions["x"] else c
-                new_r = r // factor_y if dimensions["y"] else r
-                new_shapes[(new_c, new_r)] = shape_type
-            
+                new_shapes[(c // factor_x if dimensions["x"] else c, r // factor_y if dimensions["y"] else r)] = shape_type
             for line in self.pattern_lines:
-                pts = list(line)
-                new_pts = []
-                for (c, r) in pts:
-                    new_c = c // factor_x if dimensions["x"] else c
-                    new_r = r // factor_y if dimensions["y"] else r
-                    new_pts.append((new_c, new_r))
-                # Only add line if both points are different
-                if new_pts[0] != new_pts[1]:
-                    new_lines.add(frozenset({tuple(new_pts[0]), tuple(new_pts[1])}))
-            
+                pts = [(c // factor_x if dimensions["x"] else c, r // factor_y if dimensions["y"] else r) for c, r in line]
+                if pts[0] != pts[1]:
+                    new_lines.add(frozenset({tuple(pts[0]), tuple(pts[1])}))
             for (c, r) in self.blocked_nodes:
-                new_c = c // factor_x if dimensions["x"] else c
-                new_r = r // factor_y if dimensions["y"] else r
-                new_blocked.add((new_c, new_r))
-            
-            # Resize grid after scaling
-            if dimensions["x"]:
-                self.cols = max(1, self.cols // factor_x)
-            if dimensions["y"]:
-                self.rows = max(1, self.rows // factor_y)
+                new_blocked.add((c // factor_x if dimensions["x"] else c, r // factor_y if dimensions["y"] else r))
+            if dimensions["x"]: self.cols = max(1, self.cols // factor_x)
+            if dimensions["y"]: self.rows = max(1, self.rows // factor_y)
         
-        # Update entries and state
         self.pattern_shapes = new_shapes
         self.pattern_lines = new_lines
         self.blocked_nodes = new_blocked
-        self.ent_cols.delete(0, tk.END)
-        self.ent_cols.insert(0, str(self.cols))
-        self.ent_rows.delete(0, tk.END)
-        self.ent_rows.insert(0, str(self.rows))
-        
+        self.ent_cols.delete(0, tk.END); self.ent_cols.insert(0, str(self.cols))
+        self.ent_rows.delete(0, tk.END); self.ent_rows.insert(0, str(self.rows))
         self.save_to_collection()
         self.draw_canvas()
-        messagebox.showinfo(self.tr('label_transform'), self.tr('transform_done'))
+
     
     def transform_shift(self):
         """Shift shapes and lines in a given dimension"""
-        # Ask for dimension and shift step in a single dialog
+
+        # Grab the selected patterns before losing mouse focus from the listbox to be able to apply the transformation on multiple patterns at once if needed
+        selected = self.listbox.curselection()
+
         dimensions, _, steps = self._ask_transformation_params(
             'shift_title', 'shift_dim_prompt', value_prompt_key='shift_step_prompt', value_default=0
         )
@@ -2467,260 +2463,202 @@ class SVGEditor:
         if not any(dimensions.values()) or (steps["x"] is None and steps["y"] is None):
             return
         
+        if len(selected) > 1:  # Multiple patterns selected
+            saved_name = self.current_pattern_name
+            for idx in selected:
+                self.load_pattern_from_collection(self.listbox.get(idx))
+                self._do_shift(dimensions, steps)
+            self.load_pattern_from_collection(saved_name)
+            messagebox.showinfo(self.tr('label_transform'), self.tr('transform_done'))
+            return
+        
+        self._do_shift(dimensions, steps)
+        messagebox.showinfo(self.tr('label_transform'), self.tr('transform_done'))
+    
+    def _do_shift(self, dimensions, steps):
+        """Apply shift transformation to current pattern"""
         # Check if data will be lost for negative shifts
         if steps["x"] < 0 or steps["y"] < 0:
-            will_lose_data = False
-            for (c, r) in self.pattern_shapes.keys():
-                if (dimensions["x"] and c + steps["x"] < 0) or (dimensions["y"] and r + steps["y"] < 0):
-                    will_lose_data = True
-                    break
-            
+            will_lose_data = any((dimensions["x"] and c + steps["x"] < 0) or (dimensions["y"] and r + steps["y"] < 0) 
+                                 for c, r in self.pattern_shapes.keys())
             if not will_lose_data:
                 for line in self.pattern_lines:
-                    pts = list(line)
-                    for (c, r) in pts:
-                        if (dimensions["x"] and c + steps["x"] < 0) or (dimensions["y"] and r + steps["y"] < 0):
-                            will_lose_data = True
-                            break
-            
+                    if any((dimensions["x"] and c + steps["x"] < 0) or (dimensions["y"] and r + steps["y"] < 0) for c, r in line):
+                        will_lose_data = True
+                        break
             if will_lose_data and not self._ask_custom_confirm('shift_confirm_title', 'shift_confirm_txt'):
                 return
         
-        # Save current state
         self.save_to_collection()
-        
         for dimension in ["x", "y"]:
             if dimensions[dimension]:
-                # Shift shapes
                 new_shapes = {}
                 for (c, r), shape_type in self.pattern_shapes.items():
-                    if dimension == "x":
-                        new_c = c + steps["x"]
-                        new_r = r
-                    else:
-                        new_c = c
-                        new_r = r + steps["y"]
-                    
-                    # Only keep if within valid range
-                    if new_c >= 0 and new_r >= 0:
-                        new_shapes[(new_c, new_r)] = shape_type
+                    nc = (c + steps["x"], r) if dimension == "x" else (c, r + steps["y"])
+                    if nc[0] >= 0 and nc[1] >= 0:
+                        new_shapes[nc] = shape_type
                 
-                # Shift lines
                 new_lines = set()
                 for line in self.pattern_lines:
-                    pts = list(line)
-                    new_pts = []
-                    valid = True
-                    for (c, r) in pts:
-                        if dimension == "x":
-                            new_c = c + steps["x"]
-                            new_r = r
-                        else:
-                            new_c = c
-                            new_r = r + steps["y"] 
-                        
-                        if new_c < 0 or new_r < 0:
-                            valid = False
-                            break
-                        new_pts.append((new_c, new_r))
-                    
-                    if valid:
-                        new_lines.add(frozenset({tuple(new_pts[0]), tuple(new_pts[1])}))
+                    pts = [(c + steps["x"], r) if dimension == "x" else (c, r + steps["y"]) for c, r in line]
+                    if all(p[0] >= 0 and p[1] >= 0 for p in pts):
+                        new_lines.add(frozenset({tuple(pts[0]), tuple(pts[1])}))
                 
-                # Shift blocked nodes
                 new_blocked = set()
                 for (c, r) in self.blocked_nodes:
-                    if dimension == "x":
-                        new_c = c + steps["x"]
-                        new_r = r
-                    else:
-                        new_c = c
-                        new_r = r + steps["y"]
-                    
-                    if new_c >= 0 and new_r >= 0:
-                        new_blocked.add((new_c, new_r))
+                    nc = (c + steps["x"], r) if dimension == "x" else (c, r + steps["y"])
+                    if nc[0] >= 0 and nc[1] >= 0:
+                        new_blocked.add(nc)
                 
-                # Resize grid for positive shift
                 if steps["x"] > 0 or steps["y"] > 0:
-                    if dimension == "x":
-                        self.cols += steps["x"]
-                    else:
-                        self.rows += steps["y"]
+                    if dimension == "x": self.cols += steps["x"]
+                    else: self.rows += steps["y"]
                 
-                # Update entries and state
                 self.pattern_shapes = new_shapes
                 self.pattern_lines = new_lines
                 self.blocked_nodes = new_blocked
-                self.ent_cols.delete(0, tk.END)
-                self.ent_cols.insert(0, str(self.cols))
-                self.ent_rows.delete(0, tk.END)
-                self.ent_rows.insert(0, str(self.rows))
-                
+                self.ent_cols.delete(0, tk.END); self.ent_cols.insert(0, str(self.cols))
+                self.ent_rows.delete(0, tk.END); self.ent_rows.insert(0, str(self.rows))
                 self.save_to_collection()
                 self.draw_canvas()
-        messagebox.showinfo(self.tr('label_transform'), self.tr('transform_done'))
+
     
     def transform_copy_shift(self):
         """Copy and shift pattern in a dimension, doubling the grid"""
-        # Ask for dimension only
+
         dimensions, _, _ = self._ask_transformation_params(
             'copy_shift_title', 'copy_shift_dim_prompt'
         )
         
-        if not any(dimensions.values()):  # Check if at least one dimension was selected
+        if not any(dimensions.values()):
             return
         
-        # Save current state
-        self.save_to_collection()
+        selected = self.listbox.curselection()
+        if len(selected) > 1:  # Multiple patterns selected
+            saved_name = self.current_pattern_name
+            for idx in selected:
+                self.load_pattern_from_collection(self.listbox.get(idx))
+                self._do_copy_shift(dimensions)
+            self.load_pattern_from_collection(saved_name)
+            messagebox.showinfo(self.tr('label_transform'), self.tr('transform_done'))
+            return
         
-        for dimension in ["x", "y"]:
-            if dimensions[dimension]:
-
-                # Calculate shift distance (original grid size)
-                shift_dist = self.cols if dimension == "x" else self.rows
-                
-                # Double the grid in the selected dimension
-                if dimension == "x":
-                    new_cols = self.cols * 2
-                    new_rows = self.rows
-                else:
-                    new_cols = self.cols
-                    new_rows = self.rows * 2
-                
-                # Copy shapes
-                new_shapes = self.pattern_shapes.copy()
-                for (c, r), shape_type in self.pattern_shapes.items():
-                    if dimension == "x":
-                        new_c = c + shift_dist
-                        new_r = r
-                    else:
-                        new_c = c
-                        new_r = r + shift_dist
-                    new_shapes[(new_c, new_r)] = shape_type
-                
-                # Copy lines
-                new_lines = self.pattern_lines.copy()
-                for line in self.pattern_lines:
-                    pts = list(line)
-                    new_pts = []
-                    for (c, r) in pts:
-                        if dimension == "x":
-                            new_c = c + shift_dist
-                            new_r = r
-                        else:
-                            new_c = c
-                            new_r = r + shift_dist
-                        new_pts.append((new_c, new_r))
-                    new_lines.add(frozenset({tuple(new_pts[0]), tuple(new_pts[1])}))
-                
-                # Copy blocked nodes
-                new_blocked = self.blocked_nodes.copy()
-                for (c, r) in self.blocked_nodes:
-                    if dimension == "x":
-                        new_c = c + shift_dist
-                        new_r = r
-                    else:
-                        new_c = c
-                        new_r = r + shift_dist
-                    new_blocked.add((new_c, new_r))
-                
-                # Update state
-                self.cols = new_cols
-                self.rows = new_rows
-                self.pattern_shapes = new_shapes
-                self.pattern_lines = new_lines
-                self.blocked_nodes = new_blocked
-                self.ent_cols.delete(0, tk.END)
-                self.ent_cols.insert(0, str(self.cols))
-                self.ent_rows.delete(0, tk.END)
-                self.ent_rows.insert(0, str(self.rows))
-                
-                self.save_to_collection()
-                self.draw_canvas()
+        self._do_copy_shift(dimensions)
         messagebox.showinfo(self.tr('label_transform'), self.tr('transform_done'))
     
+    def _do_copy_shift(self, dimensions):
+        """Apply copy & shift transformation to current pattern"""
+        self.save_to_collection()
+        shift_x = self.cols if dimensions["x"] else 0
+        shift_y = self.rows if dimensions["y"] else 0
+        new_cols = self.cols * 2 if dimensions["x"] else self.cols
+        new_rows = self.rows * 2 if dimensions["y"] else self.rows
+        
+        new_shapes = self.pattern_shapes.copy()
+        for (c, r), shape_type in self.pattern_shapes.items():
+            new_shapes[(c + shift_x, r + shift_y)] = shape_type
+        
+        new_lines = self.pattern_lines.copy()
+        for line in self.pattern_lines:
+            pts = [(c + shift_x, r + shift_y) for c, r in line]
+            new_lines.add(frozenset({tuple(pts[0]), tuple(pts[1])}))
+        
+        new_blocked = self.blocked_nodes.copy()
+        for (c, r) in self.blocked_nodes:
+            new_blocked.add((c + shift_x, r + shift_y))
+        
+        self.cols, self.rows = new_cols, new_rows
+        self.pattern_shapes, self.pattern_lines, self.blocked_nodes = new_shapes, new_lines, new_blocked
+        self.ent_cols.delete(0, tk.END); self.ent_cols.insert(0, str(self.cols))
+        self.ent_rows.delete(0, tk.END); self.ent_rows.insert(0, str(self.rows))
+        self.save_to_collection()
+        self.draw_canvas()
+
+    
     def transform_symmetry(self):
-        """Mirror pattern with axial symmetry, doubling the perpendicular dimension"""
-        # Ask for dimension only
+        """Mirror pattern with axial symmetry"""
+
         dimensions, _, _ = self._ask_transformation_params(
             'symmetry_title', 'symmetry_dim_prompt', sym=True
         )
         
-        if not any(dimensions.values()):  # Check if at least one dimension was selected
+        if not any(dimensions.values()):
             return
-               
-        # Save current state
-        self.save_to_collection()
         
+        selected = self.listbox.curselection()
+        if len(selected) > 1:  # Multiple patterns selected
+            saved_name = self.current_pattern_name
+            for idx in selected:
+                self.load_pattern_from_collection(self.listbox.get(idx))
+                self._do_symmetry(dimensions)
+            self.load_pattern_from_collection(saved_name)
+            messagebox.showinfo(self.tr('label_transform'), self.tr('transform_done'))
+            return
+        
+        self._do_symmetry(dimensions)
+        messagebox.showinfo(self.tr('label_transform'), self.tr('transform_done'))
+    
+    def _do_symmetry(self, dimensions):
+        """Apply symmetry transformation to current pattern"""
+        self.save_to_collection()
         for dimension in ["x", "y"]:
             if dimensions[dimension]:
-                # Double the grid in the perpendicular dimension
                 if dimension == "x":
-                    # Symmetry around X axis: mirror in Y direction
                     new_cols = self.cols
                     new_rows = self.rows * 2
                     mirror_dim = "y"
                     mirror_dist = self.rows
                 else:
-                    # Symmetry around Y axis: mirror in X direction
                     new_cols = self.cols * 2
                     new_rows = self.rows
                     mirror_dim = "x"
                     mirror_dist = self.cols
                 
-                # Copy original shapes and add mirrored shapes
                 new_shapes = self.pattern_shapes.copy()
                 for (c, r), shape_type in self.pattern_shapes.items():
                     if mirror_dim == "x":
-                        new_c = mirror_dist * 2 - c
-                        new_r = r
+                        new_shapes[(mirror_dist * 2 - c, r)] = shape_type
                     else:
-                        new_c = c
-                        new_r = mirror_dist * 2 - r
-                    new_shapes[(new_c, new_r)] = shape_type
+                        new_shapes[(c, mirror_dist * 2 - r)] = shape_type
                 
-                # Copy original lines and add mirrored lines
                 new_lines = self.pattern_lines.copy()
                 for line in self.pattern_lines:
-                    pts = list(line)
-                    new_pts = []
-                    for (c, r) in pts:
-                        if mirror_dim == "x":
-                            new_c = mirror_dist * 2 - c
-                            new_r = r
-                        else:
-                            new_c = c
-                            new_r = mirror_dist * 2 - r
-                        new_pts.append((new_c, new_r))
-                    new_lines.add(frozenset({tuple(new_pts[0]), tuple(new_pts[1])}))
+                    pts = [(mirror_dist * 2 - c, r) if mirror_dim == "x" else (c, mirror_dist * 2 - r) for c, r in line]
+                    new_lines.add(frozenset({tuple(pts[0]), tuple(pts[1])}))
                 
-                # Copy original blocked nodes and add mirrored blocked nodes
                 new_blocked = self.blocked_nodes.copy()
                 for (c, r) in self.blocked_nodes:
                     if mirror_dim == "x":
-                        new_c = mirror_dist * 2 - c
-                        new_r = r
+                        new_blocked.add((mirror_dist * 2 - c, r))
                     else:
-                        new_c = c
-                        new_r = mirror_dist * 2 - r
-                    new_blocked.add((new_c, new_r))
+                        new_blocked.add((c, mirror_dist * 2 - r))
                 
-                # Update state
-                self.cols = new_cols
-                self.rows = new_rows
-                self.pattern_shapes = new_shapes
-                self.pattern_lines = new_lines
-                self.blocked_nodes = new_blocked
-                self.ent_cols.delete(0, tk.END)
-                self.ent_cols.insert(0, str(self.cols))
-                self.ent_rows.delete(0, tk.END)
-                self.ent_rows.insert(0, str(self.rows))
-                
+                self.cols, self.rows = new_cols, new_rows
+                self.pattern_shapes, self.pattern_lines, self.blocked_nodes = new_shapes, new_lines, new_blocked
+                self.ent_cols.delete(0, tk.END); self.ent_cols.insert(0, str(self.cols))
+                self.ent_rows.delete(0, tk.END); self.ent_rows.insert(0, str(self.rows))
                 self.save_to_collection()
                 self.draw_canvas()
-        messagebox.showinfo(self.tr('label_transform'), self.tr('transform_done'))
 
     def fill_all_shapes(self):
+        """Fill the grid with shapes based on the selected fill style for occupied, free, and loop nodes"""
+        
+        selected = self.listbox.curselection()
+        if len(selected) > 1:  # Multiple patterns selected
+            self.apply_settings_to_selection()
+            saved_name = self.current_pattern_name
+            for idx in selected:
+                self.load_pattern_from_collection(self.listbox.get(idx))
+                self._do_fill_all_shapes()
+            self.load_pattern_from_collection(saved_name)
+            messagebox.showinfo(self.tr('label_grid'), self.tr('filling_done'))
+            return
+        
+        self._do_fill_all_shapes()
+        messagebox.showinfo(self.tr('label_grid'), self.tr('filling_done'))
+
+
+    def _do_fill_all_shapes(self):
         def get_dist(p1, p2): return math.sqrt((p2[0]-p1[0])**2 + (p2[1]-p1[1])**2)
         def intersect(a, b, c, d):
             def ccw(A, B, C): return (C[1]-A[1]) * (B[0]-A[0]) > (B[1]-A[1]) * (C[0]-A[0])
@@ -2788,7 +2726,8 @@ class SVGEditor:
                     self.pattern_shapes[p] = "outline"
                 # If fill_style == "void", don't add to pattern_shapes
 
-        self.save_to_collection(); self.draw_canvas()
+        self.save_to_collection(); 
+        self.draw_canvas()
     #--------------------------------------------------------------------------------------------------------
 
  ###--------------------------------------------------------------------------------------------------------
