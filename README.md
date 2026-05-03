@@ -25,6 +25,7 @@ This tool generates SVG files from patterns made of shapes and lines placed on a
 - Pattern collection management
   - create, rename, copy, delete and reorder patterns
   - rename the current collection
+  - apply current pattern configuration to a set of patterns
   - import and export the full collection as JSON
 - Grid and filling controls
   - set grid size by columns and rows
@@ -48,7 +49,6 @@ This tool generates SVG files from patterns made of shapes and lines placed on a
 - Transformations ** NEW **
   - enhance pattern creation by using scaling, shifting and symmetry
   - see [Transformations](#-transformations--new-)
- 
 - Export options
   - export the current pattern as SVG
   - batch export the full collection to SVG files
@@ -68,6 +68,7 @@ Within the pattern list:
 - `Delete` / `Backspace`: delete the selected
 - `Shift+Up`: move the selected pattern up
 - `Shift+Down`: move the selected pattern down
+- `Ctrl+click`: add pattern to the selection
 
 ---
 # 🔬 Detailed features
@@ -79,6 +80,8 @@ There are four type of transformation:
 - *shift*: shift the complete pattern of custom steps following one or two axis
 - *copy & shift*: copy the pattern and shift it of one grid size in one or two dimension
 - *symmetry*: perform axial symmetry of the pattern following one or two axis
+
+**_Note_**: Transformation can be applied to several pattern at once by selecting multiple pattern in the pattern list before clicking on the transformation button.
 
 ## 🔳 Custom grid filling options
 The tool supports an autofill feature to place shapes on nodes following custom rules.\
@@ -92,6 +95,8 @@ For any type of node, the filling option could be configured to:
 - *plain*: add a plain shape on the node
 - *outlined*: add an outlined shape on the node
 
+**_Note_**: Grid filling can be applied to several pattern at once with or witout copying current pattern filling rules by selecting multiple pattern in the pattern list before clicking on the fill button.
+
 ## ⚒ Tool usage
 ### 🔵 Shape tool
 With the shape tool selected:
@@ -99,13 +104,25 @@ With the shape tool selected:
 - to **add a outlined/hollow shape**, click on a full shape with the outlined mode enabled
 - to **remove a shape**, click on an outlined/hollow shape or on a full/plain shape with the outlined mode disabled
 
-
 ### ✒️ Drawing tool
 With the drawing tool selected:
 - to **draw a line**, click on one node and then click on another node
 - to **delete a line**, click on both endpoints of an existing line
 - to **add a dot**, click on the same node twice
 - to **remove a dot**, click on an existing dot
+
+## ⏬ Mass operations
+The tool allow a couple of mass operation to speed-up collection editing.
+
+To enable the mass operations, select mutliple pattern in the list of the collection panel using either:
+-  `Ctrl + click` to add pattern to the selection <br>
+or 
+- `click` on the first pattern and `click` on the last pattern while holding `Shift` key.
+
+The mass operations available are:
+- apply the current pattern configuration (grid, tool and parameters settings)
+- fill the grid with current pattern configuration or with each individual pattern filling rules
+- apply a transformation
 
 ## 📤 SVG file generation
 SVG files generation is WYSIWYG ("What You See Is What You get") based except for the grid.\
