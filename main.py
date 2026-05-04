@@ -1735,7 +1735,72 @@ class SVGEditor:
             s = 60
             # Limiting the points to the viewing box
             return "L ".join([f"{max(0,min(vw,cx+r*math.cos(2*math.pi*i/s))):.2f},{max(0,min(vh,cy+r*math.sin(2*math.pi*i/s))):.2f}" for i in (range(s+1) if cw else range(s,-1,-1))])
-        
+
+        def clip_polygon(poly, min_x, min_y, max_x, max_y):
+            def inside(point, edge):
+                x, y = point
+                if edge == 'left':
+                    return x >= min_x
+                if edge == 'right':
+                    return x <= max_x
+                if edge == 'top':
+                    return y >= min_y
+                return y <= max_y
+
+            def intersect(p1, p2, edge):
+                x1, y1 = p1
+                x2, y2 = p2
+                if x1 == x2 and y1 == y2:
+                    return p1
+                if edge == 'left':
+                    t = (min_x - x1) / (x2 - x1)
+                    y = y1 + t * (y2 - y1)
+                    return (min_x, y)
+                if edge == 'right':
+                    t = (max_x - x1) / (x2 - x1)
+                    y = y1 + t * (y2 - y1)
+                    return (max_x, y)
+                if edge == 'top':
+                    t = (min_y - y1) / (y2 - y1)
+                    x = x1 + t * (x2 - x1)
+                    return (x, min_y)
+                t = (max_y - y1) / (y2 - y1)
+                x = x1 + t * (x2 - x1)
+                return (x, max_y)
+
+            def clip_edge(points, edge):
+                if not points:
+                    return []
+                output = []
+                prev = points[-1]
+                prev_inside = inside(prev, edge)
+                for cur in points:
+                    cur_inside = inside(cur, edge)
+                    if prev_inside and cur_inside:
+                        output.append(cur)
+                    elif prev_inside and not cur_inside:
+                        output.append(intersect(prev, cur, edge))
+                    elif not prev_inside and cur_inside:
+                        output.append(intersect(prev, cur, edge))
+                        output.append(cur)
+                    prev = cur
+                    prev_inside = cur_inside
+                return output
+
+            if not poly:
+                return []
+            clipped = clip_edge(poly, 'left')
+            if not clipped:
+                return []
+            clipped = clip_edge(clipped, 'right')
+            if not clipped:
+                return []
+            clipped = clip_edge(clipped, 'top')
+            if not clipped:
+                return []
+            clipped = clip_edge(clipped, 'bottom')
+            return clipped
+
         shape_color = "white" if is_neg else self.color_shapes
         
         #   - Prep index 
@@ -1781,24 +1846,55 @@ class SVGEditor:
                         d += f" M {start_xi},{max(0,min(vh,y))} {gen_circle_pts(x,y,ri,False)} Z"           
                 else:
                     do = size/2
-                    # Squares are binded by the viewing box to allow proper cropping
-                    x1, y1 = max(0, min(vw, x-do)), max(0, min(vh, y-do))
-                    x2, y2 = max(0, min(vw, x+do)), max(0, min(vh, y+do)) 
-                    d = f"M {x1},{y1} H {x2} V {y2} H {x1} Z"
-                    if s_type == "outline":
-                        di = max(0, do-sw_rel)
-                        # Interior Squares are also binded by the viewing box to allow proper cropping
-                        ix1, iy1 = max(0, min(vw, x-di)), max(0, min(vh, y-di))
-                        ix2, iy2 = max(0, min(vw, x+di)), max(0, min(vh, y+di))
-                        # Invert tracing of interior to allow le fill-rule:evenodd
-                        d += f" M {ix1},{iy1} V {iy2} H {ix2} V {iy1} Z"
+                    if is_isometric:
+                        # Apply isometric transformation to the square corners and clip the polygon properly
+                        sqrt3 = math.sqrt(3)
+                        outer_poly = []
+                        for dx, dy in [(-do, -do), (do, -do), (do, do), (-do, do)]:
+                            iso_dx = dx * sqrt3 / 2
+                            iso_dy = dy + dx * 0.5
+                            outer_poly.append((x + iso_dx, y + iso_dy))
+
+                        if crop:
+                            outer_poly = clip_polygon(outer_poly, 0, 0, vw, vh)
+
+                        if outer_poly:
+                            d = "M " + " L ".join(f"{px:.2f},{py:.2f}" for px, py in outer_poly) + " Z"
+                        else:
+                            d = ""
+
+                        if s_type == "outline" and outer_poly:
+                            di = max(0, do - sw_rel)
+                            inner_poly = []
+                            for dx, dy in [(-di, -di), (di, -di), (di, di), (-di, di)]:
+                                iso_dx = dx * sqrt3 / 2
+                                iso_dy = dy + dx * 0.5
+                                inner_poly.append((x + iso_dx, y + iso_dy))
+
+                            if crop:
+                                inner_poly = clip_polygon(inner_poly, 0, 0, vw, vh)
+                            if inner_poly:
+                                d += " M " + " L ".join(f"{px:.2f},{py:.2f}" for px, py in reversed(inner_poly)) + " Z"
+                    else:
+                        # Squares are binded by the viewing box to allow proper cropping
+                        x1, y1 = max(0, min(vw, x-do)), max(0, min(vh, y-do))
+                        x2, y2 = max(0, min(vw, x+do)), max(0, min(vh, y+do)) 
+                        d = f"M {x1},{y1} H {x2} V {y2} H {x1} Z"
+                        if s_type == "outline":
+                            di = max(0, do-sw_rel)
+                            # Interior Squares are also binded by the viewing box to allow proper cropping
+                            ix1, iy1 = max(0, min(vw, x-di)), max(0, min(vh, y-di))
+                            ix2, iy2 = max(0, min(vw, x+di)), max(0, min(vh, y+di))
+                            # Invert tracing of interior to allow le fill-rule:evenodd
+                            d += f" M {ix1},{iy1} V {iy2} H {ix2} V {iy1} Z"
                 
                 if (c, r) == target_node and index_path_data and self.color_shapes == self.color_index:
                     d += f" {index_path_data}"
                     index_path_data = "" #delete index_path to not add it on next nodes
                 
                 # Create the SVG path
-                svg.append(f'<path d="{d}" fill="{shape_color}" fill-rule="evenodd" />')
+                if d:
+                    svg.append(f'<path d="{d}" fill="{shape_color}" fill-rule="evenodd" />')
         
         if index_path_data:
             # If index path was not included in any shape, add it separately on top of the shapes
@@ -1974,11 +2070,12 @@ class SVGEditor:
                     y = offset_y + r * dy
                 
                 re = base / 2
-                if t == "full": self._draw_shape_canvas(x, y, re, fam, fill, "", 0)
+                grid_type_param = "isometric" if is_isometric else "orthogonal"
+                if t == "full": self._draw_shape_canvas(x, y, re, fam, fill, "", 0, grid_type_param)
                 else:
                     sw = re * t_pct
                     ir = max(0, re - (sw / 2))
-                    self._draw_shape_canvas(x, y, ir, fam, "", fill, sw)
+                    self._draw_shape_canvas(x, y, ir, fam, "", fill, sw, grid_type_param)
         
         # Create the Index if enabled
         if self.show_index.get():
@@ -2020,9 +2117,22 @@ class SVGEditor:
         self.pattern_shapes = {}
         self.save_to_collection(); self.draw_canvas()
 
-    def _draw_shape_canvas(self, x, y, r, family, fill, outline, width):
-        if family == "circle": self.canvas.create_oval(x-r, y-r, x+r, y+r, fill=fill, outline=outline, width=width)
-        else: self.canvas.create_rectangle(x-r, y-r, x+r, y+r, fill=fill, outline=outline, width=width)
+    def _draw_shape_canvas(self, x, y, r, family, fill, outline, width, grid_type="orthogonal"):
+        if family == "circle": 
+            self.canvas.create_oval(x-r, y-r, x+r, y+r, fill=fill, outline=outline, width=width)
+        elif grid_type == "isometric":
+            # Apply isometric transformation to the square corners
+            sqrt3 = math.sqrt(3)
+            points = []
+            for dx, dy in [(-r, -r), (r, -r), (r, r), (-r, r)]:
+                iso_dx = dx * sqrt3 / 2
+                iso_dy = dy + dx * 0.5
+                px = x + iso_dx
+                py = y + iso_dy
+                points.extend([px, py])
+            self.canvas.create_polygon(points, fill=fill, outline=outline, width=width, joinstyle=tk.MITER)
+        else: 
+            self.canvas.create_rectangle(x-r, y-r, x+r, y+r, fill=fill, outline=outline, width=width)
 
     def _on_canvas_click(self, event):
         # Use same step for X and Y 
