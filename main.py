@@ -50,7 +50,7 @@ LANGUAGES = {
         'btn_neg_off' : "POSITIF",
         'shape_size' : "Taille Forme",
         'outline_width': "Contour (%)",
-        'lines_width' : "Epaisseur trait",
+        'lines_width' : "Epais. trait (%)",
         'index_ratio' : "Taille Index",
         'label_options' : "OPTIONS",
         'show_grid':  "Afficher la grille",
@@ -165,7 +165,7 @@ LANGUAGES = {
         'btn_neg_off' : "POSITIVE",
         'shape_size' : "Shape size",
         'outline_width': "Outl. width (%)",
-        'lines_width' : "Line thickness",
+        'lines_width' : "Line thick. (%)",
         'index_ratio' : "Index size",
         'label_options' : "OPTIONS",
         'show_grid':  "Show the grid",
@@ -676,7 +676,7 @@ class SVGEditor:
         self.txt_sc_outline_width=tk.StringVar(value=self.tr('outline_width'))
         self._add_horizontal_scale_var(self.cntrl, self.txt_sc_outline_width, self.shape_stroke_pct, 0, 100)
         self.txt_sc_lines_width=tk.StringVar(value=self.tr('lines_width'))
-        self._add_horizontal_scale_var(self.cntrl, self.txt_sc_lines_width, self.line_stroke_width, 0, 100)
+        self._add_horizontal_scale_var(self.cntrl, self.txt_sc_lines_width, self.line_stroke_width, 0, 200)
         self.txt_sc_index_ratio=tk.StringVar(value=self.tr('index_ratio'))
         self._add_horizontal_scale_var(self.cntrl, self.txt_sc_index_ratio, self.index_ratio, 0.1, 1.0, 0.05)
 
@@ -1711,7 +1711,7 @@ class SVGEditor:
                 else:
                     x1, y1 = (pts[0][0]*dx)+offset_x, (pts[0][1]*dy)+offset_y
                     x2, y2 = (pts[1][0]*dx)+offset_x, (pts[1][1]*dy)+offset_y
-                svg.append(f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="{self.color_lines}" stroke-width="{l_sw}" stroke-linecap="round" />')
+                svg.append(f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="{self.color_lines}" stroke-width="{l_sw}" stroke-linecap="butt" />')
             
             if hasattr(self, 'blocked_nodes'):
                 r_point = l_sw / 2
@@ -1911,7 +1911,6 @@ class SVGEditor:
     def draw_canvas(self):
         self.canvas.delete("all")
         t_pct = self.shape_stroke_pct.get() / 100.0
-        l_sw = self.line_stroke_width.get()
         
         # Use same step for X and Y 
         step, _ = self.get_coords()
@@ -2016,6 +2015,7 @@ class SVGEditor:
                 self.canvas.create_rectangle(offset_x, offset_y, offset_x+self.cols*dx, offset_y+self.rows*dy, outline="#00d2ff", width=2, dash=(4,4))
 
         # Create the Drawing/Lines if included and line width not 0
+        l_sw = step * (self.line_stroke_width.get() / 100.0)
         if self.show_lines.get() and l_sw != 0:
             for line in self.pattern_lines:
                 pts = list(line)
@@ -2027,7 +2027,7 @@ class SVGEditor:
                 else:
                     x1, y1 = offset_x + pts[0][0] * dx, offset_y + pts[0][1] * dy
                     x2, y2 = offset_x + pts[1][0] * dx, offset_y + pts[1][1] * dy
-                self.canvas.create_line(x1, y1, x2, y2, fill=self.color_lines, width=l_sw, capstyle=tk.ROUND)
+                self.canvas.create_line(x1, y1, x2, y2, fill=self.color_lines, width=l_sw, capstyle=tk.BUTT)
 
             if hasattr(self, 'blocked_nodes'):
                 # Diameter = line width
