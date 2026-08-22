@@ -31,7 +31,7 @@ This tool generates SVG files from patterns made of shapes and lines placed on a
   - set grid size by columns and rows
   - set type of grid : orthogonal or isometric
   - clear the current canvas or reset the grid
-  - fill the grid automatically following custom rules (see [Grid filling options](#grid-filling-options))
+  - fill the grid automatically following custom rules (see [Grid filling options](- custom-grid-filling-options))
 - Shape drawing tools
   - place circle or square shapes at grid nodes
   - toggle between outlined and filled shapes
